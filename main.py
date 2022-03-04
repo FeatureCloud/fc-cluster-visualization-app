@@ -19,8 +19,8 @@ styles = {
 app.layout = html.Div([
     html.H1('Dash Tabs component demo'),
     dcc.Tabs(id="tabs-example-graph", value='tab-1-example-graph', children=[
-        dcc.Tab(label='Tab One', value='tab-1-example-graph'),
-        dcc.Tab(label='Tab Two', value='tab-2-example-graph'),
+        dcc.Tab(label='Scatter plot', value='tab-1-example-graph'),
+        dcc.Tab(label='Scatter matrix', value='tab-2-example-graph'),
     ]),
     html.Div(id='tabs-content-example-graph')
 ])
@@ -97,17 +97,19 @@ def render_content(tab):
         ])
 
     elif tab == 'tab-2-example-graph':
+        df = px.data.iris()
+        fig = px.scatter_matrix(df,
+                                dimensions=["sepal_width", "sepal_length", "petal_width", "petal_length"],
+                                color="species", symbol="species",
+                                title="Scatter matrix of iris data set",
+                                labels={col: col.replace('_', ' ') for col in df.columns})  # remove underscore
+        fig.update_traces(diagonal_visible=False)
+        # fig.show()
         return html.Div([
             html.H3('Tab content 2'),
             dcc.Graph(
                 id='graph-2-tabs',
-                figure={
-                    'data': [{
-                        'x': [1, 2, 3],
-                        'y': [5, 10, 6],
-                        'type': 'bar'
-                    }]
-                }
+                figure=fig
             )
         ])
 

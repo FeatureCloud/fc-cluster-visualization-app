@@ -104,9 +104,7 @@ def render_content(tab):
                                 title="Scatter matrix of iris data set",
                                 labels={col: col.replace('_', ' ') for col in df.columns})  # remove underscore
         fig.update_traces(diagonal_visible=False)
-        # fig.show()
         return html.Div([
-            html.H3('Tab content 2'),
             dcc.Graph(
                 id='graph-2-tabs',
                 figure=fig

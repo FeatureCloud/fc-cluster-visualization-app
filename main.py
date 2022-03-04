@@ -16,71 +16,100 @@ styles = {
     }
 }
 
-df = pd.DataFrame({
-    "x": [1,2,1,2],
-    "y": [1,2,3,4],
-    "customdata": [1,2,3,4],
-    "fruit": ["apple", "apple", "orange", "orange"]
-})
-
-fig = px.scatter(df, x="x", y="y", color="fruit", custom_data=["customdata"])
-
-fig.update_layout(clickmode='event+select')
-
-fig.update_traces(marker_size=20)
-
 app.layout = html.Div([
-    dcc.Graph(
-        id='basic-interactions',
-        figure=fig
-    ),
-
-    html.Div(className='row', children=[
-        html.Div([
-            dcc.Markdown("""
-                **Hover Data**
-
-                Mouse over values in the graph.
-            """),
-            html.Pre(id='hover-data', style=styles['pre'])
-        ], className='three columns'),
-
-        html.Div([
-            dcc.Markdown("""
-                **Click Data**
-
-                Click on points in the graph.
-            """),
-            html.Pre(id='click-data', style=styles['pre']),
-        ], className='three columns'),
-
-        html.Div([
-            dcc.Markdown("""
-                **Selection Data**
-
-                Choose the lasso or rectangle tool in the graph's menu
-                bar and then select points in the graph.
-
-                Note that if `layout.clickmode = 'event+select'`, selection data also
-                accumulates (or un-accumulates) selected data if you hold down the shift
-                button while clicking.
-            """),
-            html.Pre(id='selected-data', style=styles['pre']),
-        ], className='three columns'),
-
-        html.Div([
-            dcc.Markdown("""
-                **Zoom and Relayout Data**
-
-                Click and drag on the graph to zoom or click on the zoom
-                buttons in the graph's menu bar.
-                Clicking on legend items will also fire
-                this event.
-            """),
-            html.Pre(id='relayout-data', style=styles['pre']),
-        ], className='three columns')
-    ])
+    html.H1('Dash Tabs component demo'),
+    dcc.Tabs(id="tabs-example-graph", value='tab-1-example-graph', children=[
+        dcc.Tab(label='Tab One', value='tab-1-example-graph'),
+        dcc.Tab(label='Tab Two', value='tab-2-example-graph'),
+    ]),
+    html.Div(id='tabs-content-example-graph')
 ])
+
+@app.callback(Output('tabs-content-example-graph', 'children'),
+              Input('tabs-example-graph', 'value'))
+def render_content(tab):
+    if tab == 'tab-1-example-graph':
+
+        df = pd.DataFrame({
+            "x": [1, 2, 1, 2],
+            "y": [1, 2, 3, 4],
+            "customdata": [1, 2, 3, 4],
+            "fruit": ["apple", "apple", "orange", "orange"]
+        })
+
+        fig = px.scatter(df, x="x", y="y", color="fruit", custom_data=["customdata"])
+
+        fig.update_layout(clickmode='event+select')
+
+        fig.update_traces(marker_size=20)
+
+        return html.Div([
+            dcc.Graph(
+                id='basic-interactions',
+                figure=fig
+            ),
+
+            html.Div(className='row', children=[
+                html.Div([
+                    dcc.Markdown("""
+                        **Hover Data**
+
+                        Mouse over values in the graph.
+                    """),
+                    html.Pre(id='hover-data', style=styles['pre'])
+                ], className='three columns'),
+
+                html.Div([
+                    dcc.Markdown("""
+                        **Click Data**
+
+                        Click on points in the graph.
+                    """),
+                    html.Pre(id='click-data', style=styles['pre']),
+                ], className='three columns'),
+
+                html.Div([
+                    dcc.Markdown("""
+                        **Selection Data**
+
+                        Choose the lasso or rectangle tool in the graph's menu
+                        bar and then select points in the graph.
+
+                        Note that if `layout.clickmode = 'event+select'`, selection data also
+                        accumulates (or un-accumulates) selected data if you hold down the shift
+                        button while clicking.
+                    """),
+                    html.Pre(id='selected-data', style=styles['pre']),
+                ], className='three columns'),
+
+                html.Div([
+                    dcc.Markdown("""
+                        **Zoom and Relayout Data**
+
+                        Click and drag on the graph to zoom or click on the zoom
+                        buttons in the graph's menu bar.
+                        Clicking on legend items will also fire
+                        this event.
+                    """),
+                    html.Pre(id='relayout-data', style=styles['pre']),
+                ], className='three columns')
+            ])
+        ])
+
+    elif tab == 'tab-2-example-graph':
+        return html.Div([
+            html.H3('Tab content 2'),
+            dcc.Graph(
+                id='graph-2-tabs',
+                figure={
+                    'data': [{
+                        'x': [1, 2, 3],
+                        'y': [5, 10, 6],
+                        'type': 'bar'
+                    }]
+                }
+            )
+        ])
 
 
 @app.callback(

@@ -19,97 +19,109 @@ styles = {
 app.layout = html.Div([
     html.H1('Dash Tabs component demo'),
     dcc.Tabs(id="tabs-example-graph", value='tab-1-example-graph', children=[
-        dcc.Tab(label='Scatter plot', value='tab-1-example-graph'),
-        dcc.Tab(label='Scatter matrix', value='tab-2-example-graph'),
+        dcc.Tab(label='Confounders', value='tab-confounders'),
+        dcc.Tab(label='Distances', value='tab-distances'),
+        dcc.Tab(label='Clustering Quality', value='tab-clustering-quality'),
+        dcc.Tab(label='Scree plot', value='tab-scree-plot'),
+        dcc.Tab(label='Scatter plot', value='tab-scatter-plot'),
     ]),
     html.Div(id='tabs-content-example-graph')
 ])
 
 @app.callback(Output('tabs-content-example-graph', 'children'),
               Input('tabs-example-graph', 'value'))
+
 def render_content(tab):
-    if tab == 'tab-1-example-graph':
+    if tab == 'tab-confounders':
+        return renderConfounders()
+    elif tab == 'tab-distances':
+        return renderDistances()
+    elif tab == 'tab-clustering-quality':
+        return renderClusteringQuality()
+    elif tab == 'tab-scree-plot':
+        return renderScreePlot()
+    elif tab == 'tab-scatter-plot':
+        return renderScatterPlot()
 
-        df = pd.DataFrame({
-            "x": [1, 2, 1, 2],
-            "y": [1, 2, 3, 4],
-            "customdata": [1, 2, 3, 4],
-            "fruit": ["apple", "apple", "orange", "orange"]
-        })
 
-        fig = px.scatter(df, x="x", y="y", color="fruit", custom_data=["customdata"])
+def renderConfounders():
+    return html.H1("Confounders")
 
-        fig.update_layout(clickmode='event+select')
+def renderDistances():
+    return html.H1("Distances")
 
-        fig.update_traces(marker_size=20)
+def renderClusteringQuality():
+    return html.H1("Clustering Quality")
 
-        return html.Div([
-            dcc.Graph(
-                id='basic-interactions',
-                figure=fig
-            ),
+def renderScreePlot():
+    return html.H1("Scree plot")
 
-            html.Div(className='row', children=[
-                html.Div([
-                    dcc.Markdown("""
-                        **Hover Data**
+def renderScatterPlot():
+    df = pd.DataFrame({
+        "x": [1, 2, 1, 2],
+        "y": [1, 2, 3, 4],
+        "customdata": [1, 2, 3, 4],
+        "fruit": ["apple", "apple", "orange", "orange"]
+    })
 
-                        Mouse over values in the graph.
-                    """),
-                    html.Pre(id='hover-data', style=styles['pre'])
-                ], className='three columns'),
+    fig = px.scatter(df, x="x", y="y", color="fruit", custom_data=["customdata"])
 
-                html.Div([
-                    dcc.Markdown("""
-                        **Click Data**
+    fig.update_layout(clickmode='event+select')
 
-                        Click on points in the graph.
-                    """),
-                    html.Pre(id='click-data', style=styles['pre']),
-                ], className='three columns'),
+    fig.update_traces(marker_size=20)
 
-                html.Div([
-                    dcc.Markdown("""
-                        **Selection Data**
+    return html.Div([
+        dcc.Graph(
+            id='basic-interactions',
+            figure=fig
+        ),
 
-                        Choose the lasso or rectangle tool in the graph's menu
-                        bar and then select points in the graph.
+        html.Div(className='row', children=[
+            html.Div([
+                dcc.Markdown("""
+                    **Hover Data**
 
-                        Note that if `layout.clickmode = 'event+select'`, selection data also
-                        accumulates (or un-accumulates) selected data if you hold down the shift
-                        button while clicking.
-                    """),
-                    html.Pre(id='selected-data', style=styles['pre']),
-                ], className='three columns'),
+                    Mouse over values in the graph.
+                """),
+                html.Pre(id='hover-data', style=styles['pre'])
+            ], className='three columns'),
 
-                html.Div([
-                    dcc.Markdown("""
-                        **Zoom and Relayout Data**
+            html.Div([
+                dcc.Markdown("""
+                    **Click Data**
 
-                        Click and drag on the graph to zoom or click on the zoom
-                        buttons in the graph's menu bar.
-                        Clicking on legend items will also fire
-                        this event.
-                    """),
-                    html.Pre(id='relayout-data', style=styles['pre']),
-                ], className='three columns')
-            ])
+                    Click on points in the graph.
+                """),
+                html.Pre(id='click-data', style=styles['pre']),
+            ], className='three columns'),
+
+            html.Div([
+                dcc.Markdown("""
+                    **Selection Data**
+
+                    Choose the lasso or rectangle tool in the graph's menu
+                    bar and then select points in the graph.
+
+                    Note that if `layout.clickmode = 'event+select'`, selection data also
+                    accumulates (or un-accumulates) selected data if you hold down the shift
+                    button while clicking.
+                """),
+                html.Pre(id='selected-data', style=styles['pre']),
+            ], className='three columns'),
+
+            html.Div([
+                dcc.Markdown("""
+                    **Zoom and Relayout Data**
+
+                    Click and drag on the graph to zoom or click on the zoom
+                    buttons in the graph's menu bar.
+                    Clicking on legend items will also fire
+                    this event.
+                """),
+                html.Pre(id='relayout-data', style=styles['pre']),
+            ], className='three columns')
         ])
-
-    elif tab == 'tab-2-example-graph':
-        df = px.data.iris()
-        fig = px.scatter_matrix(df,
-                                dimensions=["sepal_width", "sepal_length", "petal_width", "petal_length"],
-                                color="species", symbol="species",
-                                title="Scatter matrix of iris data set",
-                                labels={col: col.replace('_', ' ') for col in df.columns})  # remove underscore
-        fig.update_traces(diagonal_visible=False)
-        return html.Div([
-            dcc.Graph(
-                id='graph-2-tabs',
-                figure=fig
-            )
-        ])
+    ])
 
 
 @app.callback(

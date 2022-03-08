@@ -3,6 +3,7 @@ import json
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -17,19 +18,21 @@ styles = {
 }
 
 app.layout = html.Div([
-    html.H1('Dash Tabs component demo'),
-    dcc.Tabs(id="tabs-example-graph", value='tab-1-example-graph', children=[
+    html.H1('Visualization App'),
+    dcc.Tabs(id="tabs-ct", value='tab-distances', children=[
         dcc.Tab(label='Confounders', value='tab-confounders'),
         dcc.Tab(label='Distances', value='tab-distances'),
         dcc.Tab(label='Clustering Quality', value='tab-clustering-quality'),
         dcc.Tab(label='Scree plot', value='tab-scree-plot'),
         dcc.Tab(label='Scatter plot', value='tab-scatter-plot'),
     ]),
-    html.Div(id='tabs-content-example-graph')
+    html.Div(id='tabs-content-ct')
 ])
 
-@app.callback(Output('tabs-content-example-graph', 'children'),
-              Input('tabs-example-graph', 'value'))
+distance_df = pd.read_csv("data/distanceMatrix.csv", delimiter=" ", skiprows=0, index_col=0) #Code A
+
+@app.callback(Output('tabs-content-ct', 'children'),
+              Input('tabs-ct', 'value'))
 
 def render_content(tab):
     if tab == 'tab-confounders':
@@ -48,7 +51,32 @@ def renderConfounders():
     return html.H1("Confounders")
 
 def renderDistances():
-    return html.H1("Distances")
+    return html.Div([
+        html.P("Labels included:"),
+        dcc.Dropdown(
+            id='labels',
+            options=[{'label': x, 'value': x}
+                     for x in distance_df.columns],
+            value=distance_df.columns.tolist(),
+            multi=True,
+        ),
+        dcc.Graph(id="graph"),
+    ])
+
+@app.callback(
+    Output("graph", "figure"),
+    [Input("labels", "value")])
+def filter_heatmap(cols):
+    data = {
+        'z': distance_df[cols].values.tolist(),
+        'x': distance_df[cols].columns.tolist(),
+        'y': distance_df[cols].index.tolist()
+    }
+    layout = go.Layout(
+        title='Distance matrix',
+    )
+    fig = go.Figure(data=go.Heatmap(data), layout=layout)
+    return fig
 
 def renderClusteringQuality():
     return html.H1("Clustering Quality")

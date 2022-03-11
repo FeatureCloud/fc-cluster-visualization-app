@@ -1,5 +1,4 @@
 import json
-
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 import plotly.express as px
@@ -19,7 +18,7 @@ styles = {
 
 app.layout = html.Div([
     html.H1('Visualization App'),
-    dcc.Tabs(id="tabs-ct", value='tab-distances', children=[
+    dcc.Tabs(id="tabs-ct", value='tab-confounders', children=[
         dcc.Tab(label='Confounders', value='tab-confounders'),
         dcc.Tab(label='Distances', value='tab-distances'),
         dcc.Tab(label='Clustering Quality', value='tab-clustering-quality'),
@@ -29,11 +28,14 @@ app.layout = html.Div([
     html.Div(id='tabs-content-ct')
 ])
 
-distance_df = pd.read_csv("data/distanceMatrix.csv", delimiter=" ", skiprows=0, index_col=0) #Code A
+local_data_df = pd.read_csv("data/localData_.csv", delimiter=";", skiprows=0, index_col=0)
+
+clustering_2_df = pd.read_csv("data/results/K_2/clustering.csv", delimiter=";", index_col=0)
+distance_df = pd.read_csv("data/distanceMatrix.csv", delimiter=" ", skiprows=0, index_col=0)
+
 
 @app.callback(Output('tabs-content-ct', 'children'),
               Input('tabs-ct', 'value'))
-
 def render_content(tab):
     if tab == 'tab-confounders':
         return renderConfounders()
@@ -48,7 +50,25 @@ def render_content(tab):
 
 
 def renderConfounders():
-    return html.H1("Confounders")
+    local_data_df['cluster'] = clustering_2_df
+    fig = px.scatter(
+        local_data_df,
+        x='x',
+        y='y',
+        color="cluster",
+        labels={
+            "cluster": "Cluster"
+        },
+    )
+    fig.update_traces(marker_size=10)
+
+    return html.Div([
+        dcc.Graph(
+            id='confounders-scatter',
+            figure=fig
+        ),
+    ])
+
 
 def renderDistances():
     return html.Div([
@@ -60,11 +80,12 @@ def renderDistances():
             value=distance_df.columns.tolist(),
             multi=True,
         ),
-        dcc.Graph(id="graph"),
+        dcc.Graph(id="distance_graph"),
     ])
 
+
 @app.callback(
-    Output("graph", "figure"),
+    Output("distance_graph", "figure"),
     [Input("labels", "value")])
 def filter_heatmap(cols):
     data = {
@@ -78,11 +99,51 @@ def filter_heatmap(cols):
     fig = go.Figure(data=go.Heatmap(data), layout=layout)
     return fig
 
+
 def renderClusteringQuality():
-    return html.H1("Clustering Quality")
+    return html.Div([
+        html.P("K:"),
+        dcc.Dropdown([2, 3], 2, id='k-labels'),
+        dcc.Graph(id="cluster_quality_graph"),
+    ])
+
+
+@app.callback(
+    Output('cluster_quality_graph', 'figure'),
+    Input('k-labels', 'value'))
+def filter_k_label(value):
+    df_silhouette = pd.read_csv(f'data/results/K_{str(value)}/silhouette.csv', delimiter=';')
+    df_silhouette = df_silhouette.sort_values(["cluster", "y"], ascending=(True, False)).reset_index()
+    avg_value = "{:.2f}".format(df_silhouette['y'].mean())
+
+    fig = go.Figure(go.Bar(
+        y=df_silhouette['y'],
+        marker={
+            'color': df_silhouette['cluster'],
+        }
+    ))
+    fig.add_shape(
+        type="line",
+        x0=0, y0=avg_value, x1=df_silhouette['x'].max(), y1=avg_value,
+        line=dict(
+            color="Red",
+            width=2,
+            dash="dashdot",
+          )
+    )
+    fig.update_layout(
+        title=f'Clusters silhouette plot<br>Average silhouette width: {str(avg_value)}',
+        xaxis={"title": ""},
+        yaxis={"title": "Silhouette width Si"},
+        bargap=0.0,
+    )
+
+    return fig
+
 
 def renderScreePlot():
     return html.H1("Scree plot")
+
 
 def renderScatterPlot():
     df = pd.DataFrame({

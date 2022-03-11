@@ -137,7 +137,7 @@ def filter_k_label(value):
         yaxis={"title": "Silhouette width Si"},
         bargap=0.0,
     )
-
+    fig.update_xaxes(showticklabels=False)
     return fig
 
 

@@ -115,13 +115,23 @@ def filter_k_label(value):
     df_silhouette = pd.read_csv(f'data/results/K_{str(value)}/silhouette.csv', delimiter=';')
     df_silhouette = df_silhouette.sort_values(["cluster", "y"], ascending=(True, False)).reset_index()
     avg_value = "{:.2f}".format(df_silhouette['y'].mean())
+    cluster_values_list = df_silhouette.cluster.unique()
 
-    fig = go.Figure(go.Bar(
-        y=df_silhouette['y'],
-        marker={
-            'color': df_silhouette['cluster'],
-        }
-    ))
+    fig = go.Figure()
+    for i in cluster_values_list:
+        fig.add_trace(
+            go.Bar(
+                y=df_silhouette[df_silhouette['cluster'] == i]['y'],
+                x=df_silhouette[df_silhouette['cluster'] == i].index,
+                name=f'Cluster {i}',
+                marker={
+                    "line": {
+                        "width": 0,
+                    },
+                }
+            )
+        )
+    # Add avg line on top
     fig.add_shape(
         type="line",
         x0=0, y0=avg_value, x1=df_silhouette['x'].max(), y1=avg_value,
@@ -133,11 +143,17 @@ def filter_k_label(value):
     )
     fig.update_layout(
         title=f'Clusters silhouette plot<br>Average silhouette width: {str(avg_value)}',
-        xaxis={"title": ""},
+        xaxis={
+            "title": "",
+            "showticklabels": False,
+        },
         yaxis={"title": "Silhouette width Si"},
         bargap=0.0,
+        showlegend=True,
+        legend={
+            "title": "Clusters",
+        },
     )
-    fig.update_xaxes(showticklabels=False)
     return fig
 
 

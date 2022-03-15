@@ -1,9 +1,17 @@
 import json
+from math import pi
+
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+
+import numpy as np
+from numpy import pi, sin, cos
+from plotly.tools import DEFAULT_PLOTLY_COLORS
+from sklearn.datasets import load_iris
+from sklearn.decomposition import PCA
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -23,14 +31,12 @@ app.layout = html.Div([
         dcc.Tab(label='Distances', value='tab-distances'),
         dcc.Tab(label='Clustering Quality', value='tab-clustering-quality'),
         dcc.Tab(label='Scree plot', value='tab-scree-plot'),
-        dcc.Tab(label='Scatter plot', value='tab-scatter-plot'),
+        # dcc.Tab(label='Scatter plot', value='tab-scatter-plot'),
     ]),
     html.Div(id='tabs-content-ct')
 ])
 
 local_data_df = pd.read_csv("data/localData_.csv", delimiter=";", skiprows=0, index_col=0)
-
-clustering_2_df = pd.read_csv("data/results/K_2/clustering.csv", delimiter=";", index_col=0)
 distance_df = pd.read_csv("data/distanceMatrix.csv", delimiter=" ", skiprows=0, index_col=0)
 
 
@@ -50,24 +56,55 @@ def render_content(tab):
 
 
 def renderConfounders():
-    local_data_df['cluster'] = clustering_2_df
-    fig = px.scatter(
-        local_data_df,
-        x='x',
-        y='y',
-        color="cluster",
-        labels={
-            "cluster": "Cluster"
-        },
-    )
-    fig.update_traces(marker_size=10)
-
     return html.Div([
+        html.P("K:"),
+        dcc.Dropdown([2, 3], 2, id='k-confounders'),
         dcc.Graph(
             id='confounders-scatter',
-            figure=fig
         ),
     ])
+
+
+@app.callback(
+    Output('confounders-scatter', 'figure'),
+    Input('k-confounders', 'value'))
+def filter_k_confounders(value):
+    confounding_df = pd.read_csv(f'data/all_confounders_{value}.csv', delimiter=",", skiprows=0)
+    cluster_values_list = confounding_df.cluster.unique()
+    fig = go.Figure()
+    for i in cluster_values_list:
+        color = DEFAULT_PLOTLY_COLORS[i]
+        fig.add_trace(
+            go.Scatter(
+                x=confounding_df[confounding_df['cluster'] == i]['x'],
+                y=confounding_df[confounding_df['cluster'] == i]['y'],
+                mode='markers',
+                name=f'Cluster {i}',
+                marker={
+                    "size": 10,
+                    "color": color,
+                }
+            )
+        )
+        path = confidence_ellipse(confounding_df[confounding_df['cluster'] == i]['x'],
+                                  confounding_df[confounding_df['cluster'] == i]['y'])
+        fig.add_shape(
+            type='path',
+            path=path,
+            line={'dash': 'dot'},
+            line_color=color,
+            fillcolor=color,
+            opacity=0.2
+        )
+
+    fig.update_layout(
+        title="Confounders",
+        showlegend=True,
+        legend={
+            "title": "Clusters",
+        },
+    )
+    return fig
 
 
 def renderDistances():
@@ -139,7 +176,7 @@ def filter_k_label(value):
             color="Red",
             width=2,
             dash="dashdot",
-          )
+        )
     )
     fig.update_layout(
         title=f'Clusters silhouette plot<br>Average silhouette width: {str(avg_value)}',
@@ -255,6 +292,62 @@ def display_selected_data(selectedData):
     Input('basic-interactions', 'relayoutData'))
 def display_relayout_data(relayoutData):
     return json.dumps(relayoutData, indent=2)
+
+
+def confidence_ellipse(x, y, n_std=1.96, size=100):
+    """
+        Get the covariance confidence ellipse of *x* and *y*.
+        Parameters
+        ----------
+        x, y : array-like, shape (n, )
+            Input data.
+        n_std : float
+            The number of standard deviations to determine the ellipse's radiuses.
+        size : int
+            Number of points defining the ellipse
+        Returns
+        -------
+        String containing an SVG path for the ellipse
+
+        References (H/T)
+        ----------------
+        https://matplotlib.org/3.1.1/gallery/statistics/confidence_ellipse.html
+        https://community.plotly.com/t/arc-shape-with-path/7205/5
+        """
+    if x.size != y.size:
+        raise ValueError("x and y must be the same size")
+
+    cov = np.cov(x, y)
+    pearson = cov[0, 1] / np.sqrt(cov[0, 0] * cov[1, 1])
+    # Using a special case to obtain the eigenvalues of this
+    # two-dimensional dataset.
+    ell_radius_x = np.sqrt(1 + pearson)
+    ell_radius_y = np.sqrt(1 - pearson)
+    theta = np.linspace(0, 2 * np.pi, size)
+    ellipse_coords = np.column_stack([ell_radius_x * np.cos(theta), ell_radius_y * np.sin(theta)])
+
+    # Calculating the stdandard deviation of x from
+    # the squareroot of the variance and multiplying
+    # with the given number of standard deviations.
+    x_scale = np.sqrt(cov[0, 0]) * n_std
+    x_mean = np.mean(x)
+
+    # calculating the stdandard deviation of y ...
+    y_scale = np.sqrt(cov[1, 1]) * n_std
+    y_mean = np.mean(y)
+
+    translation_matrix = np.tile([x_mean, y_mean], (ellipse_coords.shape[0], 1))
+    rotation_matrix = np.array([[np.cos(np.pi / 4), np.sin(np.pi / 4)],
+                                [-np.sin(np.pi / 4), np.cos(np.pi / 4)]])
+    scale_matrix = np.array([[x_scale, 0],
+                             [0, y_scale]])
+    ellipse_coords = ellipse_coords.dot(rotation_matrix).dot(scale_matrix) + translation_matrix
+
+    path = f'M {ellipse_coords[0, 0]}, {ellipse_coords[0, 1]}'
+    for k in range(1, len(ellipse_coords)):
+        path += f'L{ellipse_coords[k, 0]}, {ellipse_coords[k, 1]}'
+    path += ' Z'
+    return path
 
 
 if __name__ == '__main__':

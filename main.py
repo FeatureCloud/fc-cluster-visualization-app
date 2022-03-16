@@ -8,10 +8,8 @@ import plotly.graph_objects as go
 import pandas as pd
 
 import numpy as np
-from numpy import pi, sin, cos
+from plotly.subplots import make_subplots
 from plotly.tools import DEFAULT_PLOTLY_COLORS
-from sklearn.datasets import load_iris
-from sklearn.decomposition import PCA
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -58,7 +56,7 @@ def render_content(tab):
 def renderConfounders():
     return html.Div([
         html.P("K:"),
-        dcc.Dropdown([2, 3], 2, id='k-confounders'),
+        dcc.Dropdown([2, 3], 2, id='k-confounders', style={'width': '20vh'}),
         dcc.Graph(
             id='confounders-scatter',
         ),
@@ -71,13 +69,23 @@ def renderConfounders():
 def filter_k_confounders(value):
     confounding_df = pd.read_csv(f'data/all_confounders_{value}.csv', delimiter=",", skiprows=0)
     cluster_values_list = confounding_df.cluster.unique()
-    fig = go.Figure()
+    gender_list = confounding_df.sex.unique()
+    fig = make_subplots(
+        rows=3,
+        cols=5,
+        specs=[
+            [{'rowspan': 3, 'colspan': 3}, None, None,  {'type': 'xy'}, {'type': 'pie'}],
+            [None, None, None, {'type': 'xy'}, {'type': 'pie'}],
+            [None, None, None, {'type': 'xy'}, {'type': 'pie'}]
+        ],
+        subplot_titles=["Confidence ellipsis", "Age", "Gender", "Age", "Gender", "Age", "Gender"]
+    )
     for i in cluster_values_list:
         color = DEFAULT_PLOTLY_COLORS[i]
-        fig.add_trace(
-            go.Scatter(
-                x=confounding_df[confounding_df['cluster'] == i]['x'],
-                y=confounding_df[confounding_df['cluster'] == i]['y'],
+        df = confounding_df[confounding_df['cluster'] == i]
+        scatter_plot = go.Scatter(
+                x=df['x'],
+                y=df['y'],
                 mode='markers',
                 name=f'Cluster {i}',
                 marker={
@@ -85,25 +93,30 @@ def filter_k_confounders(value):
                     "color": color,
                 }
             )
-        )
-        path = confidence_ellipse(confounding_df[confounding_df['cluster'] == i]['x'],
-                                  confounding_df[confounding_df['cluster'] == i]['y'])
+        fig.append_trace(scatter_plot, row=1, col=1)
+        path = confidence_ellipse(df['x'],
+                                  df['y'])
         fig.add_shape(
             type='path',
             path=path,
             line={'dash': 'dot'},
             line_color=color,
             fillcolor=color,
-            opacity=0.2
+            opacity=0.2,
+            row=1,
+            col=1
         )
+        # add confounding factors diagrams
+        bar_age = go.Bar(
+            y=df['age']
+        )
+        fig.add_trace(bar_age, row=i, col=4)
 
-    fig.update_layout(
-        title="Confounders",
-        showlegend=True,
-        legend={
-            "title": "Clusters",
-        },
-    )
+        pie_values_list = []
+        for gender in gender_list:
+            pie_values_list.append(df[df.sex == gender].count()['sex'])
+        fig.add_trace(go.Pie(labels=gender_list, values=pie_values_list), row=i, col=5)
+
     return fig
 
 

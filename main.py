@@ -39,7 +39,6 @@ app.layout = html.Div([
 local_data_df = pd.read_csv("data/localData_.csv", delimiter=";", skiprows=0, index_col=0)
 distance_df = pd.read_csv("data/distanceMatrix.csv", delimiter=" ", skiprows=0, index_col=0)
 
-
 @app.callback(Output('tabs-content-ct', 'children'),
               Input('tabs-ct', 'value'))
 def render_content(tab):
@@ -69,11 +68,10 @@ def renderConfounders():
     Output('confounders-scatter', 'figure'),
     Input('k-confounders', 'value'))
 def filter_k_confounders(value):
-
-    # construct dataframe that contains all confounding factors
+    # to be changed later for an automatic counting
     confounding_df = pd.read_csv(f'data/all_confounders_{value}.csv', delimiter=",", skiprows=0)
     cluster_values_list = confounding_df.cluster.unique()
-    # to be changed later for an automatic counting
+    gender_list = confounding_df.sex.unique()
     nr_of_confounding_factors = 2
     nr_of_clusters = confounding_df.cluster.nunique()
     # fig = make_subplots(
@@ -133,7 +131,6 @@ def filter_k_confounders(value):
         fig.add_trace(bar_age, row=i, col=4)
 
         pie_values_list = []
-        gender_list = confounding_df.sex.unique()
         for gender in gender_list:
             pie_values_list.append(df[df.sex == gender].count()['sex'])
         fig.add_trace(go.Pie(labels=gender_list, values=pie_values_list), row=i, col=5)
@@ -142,14 +139,16 @@ def filter_k_confounders(value):
 
 
 def renderDistances():
+    confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=",", skiprows=0)
+    gender_list = confounding_df.sex.unique()
     return html.Div([
         html.P("Labels included:"),
         dcc.Dropdown(
             id='labels',
-            options=[{'label': x, 'value': x}
-                     for x in distance_df.columns],
-            value=distance_df.columns.tolist(),
+            options=gender_list,
+            value=gender_list,
             multi=True,
+            style={'width': '20vh'}
         ),
         dcc.Graph(id="distance_graph"),
     ])
@@ -159,10 +158,13 @@ def renderDistances():
     Output("distance_graph", "figure"),
     [Input("labels", "value")])
 def filter_heatmap(cols):
+    confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=",", skiprows=0)
+    index_list = confounding_df.loc[confounding_df['sex'].isin(cols)].index.tolist()
+    df = distance_df[distance_df.index.isin(index_list)]
     data = {
-        'z': distance_df[cols].values.tolist(),
-        'x': distance_df[cols].columns.tolist(),
-        'y': distance_df[cols].index.tolist()
+        'z': df.values.tolist(),
+        'x': df.columns.tolist(),
+        'y': df.index.tolist()
     }
     layout = go.Layout(
         title='Distance matrix',

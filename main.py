@@ -1,5 +1,4 @@
 import json
-from math import pi
 
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
@@ -10,6 +9,9 @@ import pandas as pd
 import numpy as np
 from plotly.subplots import make_subplots
 from plotly.tools import DEFAULT_PLOTLY_COLORS
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -227,7 +229,53 @@ def filter_k_label(value):
 
 
 def renderScreePlot():
-    return html.H1("Scree plot")
+    # define URL where dataset is located
+    url = "https://raw.githubusercontent.com/JWarmenhoven/ISLR-python/master/Notebooks/Data/USArrests.csv"
+
+    # read in data
+    data = pd.read_csv(url)
+
+    # define columns to use for PCA
+    df = data.iloc[:, 1:5]
+
+    # define scaler
+    scaler = StandardScaler()
+
+    # create copy of DataFrame
+    scaled_df = df.copy()
+
+    # created scaled version of DataFrame
+    scaled_df = pd.DataFrame(scaler.fit_transform(scaled_df), columns=scaled_df.columns)
+
+    # define PCA model to use
+    pca = PCA(n_components=4)
+
+    # fit PCA model to data
+    pca.fit(scaled_df)
+    PC_values = np.arange(pca.n_components_) + 1
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        mode='lines+markers',
+        x=PC_values,
+        y=pca.explained_variance_ratio_,
+        marker={
+            "size": 10,
+            "symbol": "circle-open",
+        }
+    ))
+    fig.update_layout(
+        title="Scree plot",
+        xaxis_title="Component number",
+        yaxis_title="Eigenvalue",
+
+    )
+    return html.Div([
+        dcc.Graph(
+            id='scree-plot',
+            figure=fig
+        )])
+
 
 
 def renderScatterPlot():

@@ -67,9 +67,24 @@ def renderConfounders():
     Output('confounders-scatter', 'figure'),
     Input('k-confounders', 'value'))
 def filter_k_confounders(value):
+
+    # construct dataframe that contains all confounding factors
     confounding_df = pd.read_csv(f'data/all_confounders_{value}.csv', delimiter=",", skiprows=0)
     cluster_values_list = confounding_df.cluster.unique()
-    gender_list = confounding_df.sex.unique()
+    # to be changed later for an automatic counting
+    nr_of_confounding_factors = 2
+    nr_of_clusters = confounding_df.cluster.nunique()
+    # fig = make_subplots(
+    #     rows=nr_of_confounding_factors*2,
+    #     cols=nr_of_confounding_factors,
+    #     specs=[
+    #         [{'rowspan': 3, 'colspan': 3}, None, None,  {'type': 'xy'}, {'type': 'pie'}],
+    #         [None, None, None, {'type': 'xy'}, {'type': 'pie'}],
+    #         [None, None, None, {'type': 'xy'}, {'type': 'pie'}]
+    #     ],
+    #     subplot_titles=["Confidence ellipsis", "Age", "Gender", "Age", "Gender", "Age", "Gender"]
+    # )
+
     fig = make_subplots(
         rows=3,
         cols=5,
@@ -78,7 +93,7 @@ def filter_k_confounders(value):
             [None, None, None, {'type': 'xy'}, {'type': 'pie'}],
             [None, None, None, {'type': 'xy'}, {'type': 'pie'}]
         ],
-        subplot_titles=["Confidence ellipsis", "Age", "Gender", "Age", "Gender", "Age", "Gender"]
+        subplot_titles=["Confidence ellipsis", "Age", "Sex", "Age", "Sex", "Age", "Sex"]
     )
     for i in cluster_values_list:
         color = DEFAULT_PLOTLY_COLORS[i]
@@ -102,17 +117,21 @@ def filter_k_confounders(value):
             line={'dash': 'dot'},
             line_color=color,
             fillcolor=color,
-            opacity=0.2,
+            opacity=0.15,
             row=1,
             col=1
         )
         # add confounding factors diagrams
-        bar_age = go.Bar(
-            y=df['age']
+        bar_age = go.Histogram(
+            x=df['age'],
+            marker={'color': color},
+            hovertemplate='Age group: %{x}<br>Count: %{y}',
+            showlegend=False,
         )
         fig.add_trace(bar_age, row=i, col=4)
 
         pie_values_list = []
+        gender_list = confounding_df.sex.unique()
         for gender in gender_list:
             pie_values_list.append(df[df.sex == gender].count()['sex'])
         fig.add_trace(go.Pie(labels=gender_list, values=pie_values_list), row=i, col=5)

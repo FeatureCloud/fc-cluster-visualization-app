@@ -38,6 +38,8 @@ app.layout = html.Div([
 
 local_data_df = pd.read_csv("data/localData_.csv", delimiter=";", skiprows=0, index_col=0)
 distance_df = pd.read_csv("data/distanceMatrix.csv", delimiter=" ", skiprows=0, index_col=0)
+confounding_meta = pd.read_csv(f'data/confoundingData.meta', delimiter=";", skiprows=0)
+
 
 @app.callback(Output('tabs-content-ct', 'children'),
               Input('tabs-ct', 'value'))
@@ -55,13 +57,9 @@ def render_content(tab):
 
 
 def renderConfounders():
-    return html.Div([
-        html.P("K:"),
-        dcc.Dropdown([2, 3], 2, id='k-confounders', style={'width': '20vh'}),
-        dcc.Graph(
-            id='confounders-scatter',
-        ),
-    ])
+    html_elem_list = [html.Label('K'), dcc.Dropdown([2, 3], 2, id='k-confounders', style={'width': '20vh'})] + \
+        getConfoundingFactorsFilter('confounders') + [dcc.Graph(id='confounders-scatter')]
+    return html.Div(html_elem_list)
 
 
 @app.callback(
@@ -71,43 +69,34 @@ def filter_k_confounders(value):
     # to be changed later for an automatic counting
     confounding_df = pd.read_csv(f'data/all_confounders_{value}.csv', delimiter=",", skiprows=0)
     cluster_values_list = confounding_df.cluster.unique()
-    gender_list = confounding_df.sex.unique()
     nr_of_confounding_factors = 2
-    nr_of_clusters = confounding_df.cluster.nunique()
-    # fig = make_subplots(
-    #     rows=nr_of_confounding_factors*2,
-    #     cols=nr_of_confounding_factors,
-    #     specs=[
-    #         [{'rowspan': 3, 'colspan': 3}, None, None,  {'type': 'xy'}, {'type': 'pie'}],
-    #         [None, None, None, {'type': 'xy'}, {'type': 'pie'}],
-    #         [None, None, None, {'type': 'xy'}, {'type': 'pie'}]
-    #     ],
-    #     subplot_titles=["Confidence ellipsis", "Age", "Gender", "Age", "Gender", "Age", "Gender"]
-    # )
+    # nr_of_clusters = confounding_df.cluster.nunique()
+    nr_rows = nr_of_confounding_factors * 2
+    nr_cols = nr_of_confounding_factors
+
+    specs, subplot_titles = getSpecsForMatrix(nr_rows, nr_cols, confounding_meta)
+    print(specs)
+    print(subplot_titles)
 
     fig = make_subplots(
-        rows=3,
-        cols=5,
-        specs=[
-            [{'rowspan': 3, 'colspan': 3}, None, None,  {'type': 'xy'}, {'type': 'pie'}],
-            [None, None, None, {'type': 'xy'}, {'type': 'pie'}],
-            [None, None, None, {'type': 'xy'}, {'type': 'pie'}]
-        ],
-        subplot_titles=["Confidence ellipsis", "Age", "Sex", "Age", "Sex", "Age", "Sex"]
+        rows=nr_rows,
+        cols=nr_cols,
+        specs=specs,
+        subplot_titles=subplot_titles
     )
     for i in cluster_values_list:
         color = DEFAULT_PLOTLY_COLORS[i]
         df = confounding_df[confounding_df['cluster'] == i]
         scatter_plot = go.Scatter(
-                x=df['x'],
-                y=df['y'],
-                mode='markers',
-                name=f'Cluster {i}',
-                marker={
-                    "size": 10,
-                    "color": color,
-                }
-            )
+            x=df['x'],
+            y=df['y'],
+            mode='markers',
+            name=f'Cluster {i}',
+            marker={
+                "size": 10,
+                "color": color,
+            }
+        )
         fig.append_trace(scatter_plot, row=1, col=1)
         path = confidence_ellipse(df['x'],
                                   df['y'])
@@ -121,37 +110,81 @@ def filter_k_confounders(value):
             row=1,
             col=1
         )
-        # add confounding factors diagrams
-        bar_age = go.Histogram(
-            x=df['age'],
-            marker={'color': color},
-            hovertemplate='Age group: %{x}<br>Count: %{y}',
-            showlegend=False,
-        )
-        fig.add_trace(bar_age, row=i, col=4)
 
-        pie_values_list = []
-        for gender in gender_list:
-            pie_values_list.append(df[df.sex == gender].count()['sex'])
-        fig.add_trace(go.Pie(labels=gender_list, values=pie_values_list), row=i, col=5)
+    for i in cluster_values_list:
+        color = DEFAULT_PLOTLY_COLORS[i]
+        df = confounding_df[confounding_df['cluster'] == i]
+        for j in range(0, len(confounding_meta.index)):
+            if (confounding_meta.iloc[j]['data_type'] == 'continuous'):
+                # add histogram
+                bar_continuous = go.Histogram(
+                    x=df[confounding_meta.iloc[j]['name']],
+                    marker={'color': color},
+                    hovertemplate='Age group: %{x}<br>Count: %{y}',
+                    showlegend=False,
+                )
+                fig.add_trace(bar_continuous, row=i+nr_cols, col=j+1)
+            elif (confounding_meta.iloc[j]['data_type'] == 'discrete'):
+                col = confounding_meta.iloc[j]['name']
+                # add pie chart
+                pie_values_list = []
+                discrete_val_list = confounding_df[col].unique()
+
+                for discrete_val in discrete_val_list:
+                    pie_values_list.append(df[df[col] == discrete_val].count()[col])
+                fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list), row=i + nr_cols, col=j + 1)
 
     return fig
 
 
-def renderDistances():
+def getSpecsForMatrix(rows, cols, confounding_meta):
+    specs = []
+    subplot_titles = []
+    for i in range(1, rows + 1):
+        current_specs_row = []
+        if i == 1:
+            current_specs_row.append({'rowspan': cols, 'colspan': cols})
+            subplot_titles.append("Confidence ellipsis")
+            for j in range(1, cols):
+                current_specs_row.append(None)
+        elif i <= cols:
+            for j in range(1, cols + 1):
+                current_specs_row.append(None)
+        else:
+            for j in range(0, len(confounding_meta.index)):
+                current_specs_row.append({'type': 'xy' if confounding_meta.iloc[j]['data_type'] == 'continuous' else 'pie'})
+                subplot_titles.append(confounding_meta.iloc[j]['name'].capitalize())
+        specs.append(current_specs_row)
+    return specs, subplot_titles
+
+def getConfoundingFactorsFilter(pre):
+    html_elem_list = []
     confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=",", skiprows=0)
-    gender_list = confounding_df.sex.unique()
-    return html.Div([
-        html.P("Labels included:"),
-        dcc.Dropdown(
-            id='labels',
-            options=gender_list,
-            value=gender_list,
-            multi=True,
-            style={'width': '20vh'}
-        ),
-        dcc.Graph(id="distance_graph"),
-    ])
+
+    for j in range(0, len(confounding_meta.index)):
+        col = confounding_meta.iloc[j]["name"]
+        if (confounding_meta.iloc[j]['data_type'] == 'continuous'):
+            # add range slider
+            col_min = confounding_df[col].min()
+            col_max = confounding_df[col].max()
+            html_elem_list.append(html.Label(col.capitalize()))
+            html_elem_list.append(dcc.RangeSlider(
+                col_min, col_max, value=[col_min, col_max],
+                id=f'{pre}-range-slider-{j}')
+            )
+        else:
+            # add checklist
+            pie_values_list = []
+            discreet_val_list = confounding_df.sex.unique()
+            html_elem_list.append(html.Label(confounding_meta.iloc[j]["name"].capitalize()))
+            html_elem_list.append(dcc.Checklist(discreet_val_list, discreet_val_list, inline=True, id=f'{pre}-checklist-{j}'))
+    return html_elem_list
+
+
+def renderDistances():
+    html_elem_list = getConfoundingFactorsFilter('distance')
+    html_elem_list.insert(0, dcc.Graph(id="distance_graph"))
+    return html.Div(html_elem_list)
 
 
 @app.callback(
@@ -277,7 +310,6 @@ def renderScreePlot():
             id='scree-plot',
             figure=fig
         )])
-
 
 
 def renderScatterPlot():

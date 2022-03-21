@@ -1,2 +1,3 @@
-age	continous	integer
-sex	discreet	[M, F]
+name;data_type;value_type
+age;continuous;integer
+sex;discrete;string

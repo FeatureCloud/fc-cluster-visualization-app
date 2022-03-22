@@ -176,11 +176,11 @@ def getConfoundingFactorsFilter(id_pre_tag):
             )
         elif data_type == 'discrete':
             # add checklist
-            discreet_val_list = confounding_df[col].unique()
+            discrete_val_list = confounding_df[col].unique()
             html_elem_list.append(html.Label(col.capitalize()))
             html_elem_list.append(
                 dcc.Checklist(
-                    discreet_val_list, discreet_val_list, inline=True,
+                    discrete_val_list, discrete_val_list, inline=True,
                     id={
                         'type': f'filter-checklist-{id_pre_tag}',
                         'index': j

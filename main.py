@@ -1,7 +1,7 @@
 import json
 
 from dash import Dash, dcc, html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, ALL
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
@@ -11,7 +11,6 @@ from plotly.subplots import make_subplots
 from plotly.tools import DEFAULT_PLOTLY_COLORS
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -36,13 +35,13 @@ app.layout = html.Div([
     html.Div(id='tabs-content-ct')
 ])
 
-local_data_df = pd.read_csv("data/localData_.csv", delimiter=";", skiprows=0, index_col=0)
 distance_df = pd.read_csv("data/distanceMatrix.csv", delimiter=" ", skiprows=0, index_col=0)
 confounding_meta = pd.read_csv(f'data/confoundingData.meta', delimiter=";", skiprows=0)
 
-
-@app.callback(Output('tabs-content-ct', 'children'),
-              Input('tabs-ct', 'value'))
+@app.callback(
+    Output('tabs-content-ct', 'children'),
+    Input('tabs-ct', 'value')
+)
 def render_content(tab):
     if tab == 'tab-confounders':
         return renderConfounders()
@@ -52,8 +51,8 @@ def render_content(tab):
         return renderClusteringQuality()
     elif tab == 'tab-scree-plot':
         return renderScreePlot()
-    elif tab == 'tab-scatter-plot':
-        return renderScatterPlot()
+    # elif tab == 'tab-scatter-plot':
+    #     return renderScatterPlot()
 
 
 def renderConfounders():
@@ -74,10 +73,7 @@ def filter_k_confounders(value):
     nr_rows = nr_of_confounding_factors * 2
     nr_cols = nr_of_confounding_factors
 
-    specs, subplot_titles = getSpecsForMatrix(nr_rows, nr_cols, confounding_meta)
-    print(specs)
-    print(subplot_titles)
-
+    specs, subplot_titles = getSpecsForMatrix(nr_rows, nr_cols)
     fig = make_subplots(
         rows=nr_rows,
         cols=nr_cols,
@@ -137,7 +133,7 @@ def filter_k_confounders(value):
     return fig
 
 
-def getSpecsForMatrix(rows, cols, confounding_meta):
+def getSpecsForMatrix(rows, cols):
     specs = []
     subplot_titles = []
     for i in range(1, rows + 1):
@@ -157,42 +153,79 @@ def getSpecsForMatrix(rows, cols, confounding_meta):
         specs.append(current_specs_row)
     return specs, subplot_titles
 
-def getConfoundingFactorsFilter(pre):
+def getConfoundingFactorsFilter(id_pre_tag):
     html_elem_list = []
-    confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=",", skiprows=0)
-
-    for j in range(0, len(confounding_meta.index)):
+    confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=";", skiprows=0)
+    confounding_length = len(confounding_meta.index)
+    for j in range(0, confounding_length):
         col = confounding_meta.iloc[j]["name"]
-        if (confounding_meta.iloc[j]['data_type'] == 'continuous'):
+        data_type = confounding_meta.iloc[j]['data_type']
+        if data_type == 'continuous':
             # add range slider
             col_min = confounding_df[col].min()
             col_max = confounding_df[col].max()
             html_elem_list.append(html.Label(col.capitalize()))
-            html_elem_list.append(dcc.RangeSlider(
-                col_min, col_max, value=[col_min, col_max],
-                id=f'{pre}-range-slider-{j}')
+            html_elem_list.append(
+                dcc.RangeSlider(
+                    col_min, col_max, value=[col_min, col_max],
+                    id={
+                        'type': f'filter-range-slider-{id_pre_tag}',
+                        'index': j
+                    }
+                )
             )
-        else:
+        elif data_type == 'discrete':
             # add checklist
-            pie_values_list = []
-            discreet_val_list = confounding_df.sex.unique()
-            html_elem_list.append(html.Label(confounding_meta.iloc[j]["name"].capitalize()))
-            html_elem_list.append(dcc.Checklist(discreet_val_list, discreet_val_list, inline=True, id=f'{pre}-checklist-{j}'))
+            discreet_val_list = confounding_df[col].unique()
+            html_elem_list.append(html.Label(col.capitalize()))
+            html_elem_list.append(
+                dcc.Checklist(
+                    discreet_val_list, discreet_val_list, inline=True,
+                    id={
+                        'type': f'filter-checklist-{id_pre_tag}',
+                        'index': j
+                    }
+                )
+            )
     return html_elem_list
 
 
 def renderDistances():
-    html_elem_list = getConfoundingFactorsFilter('distance')
-    html_elem_list.insert(0, dcc.Graph(id="distance_graph"))
-    return html.Div(html_elem_list)
+    return html.Div(
+        [
+            dcc.Graph(id="distance_graph"),
+            html.Div(
+                children=getConfoundingFactorsFilter('distance'),
+                style={'margin': '0 auto', 'width': '70%'}
+            )
+        ]
+    )
 
 
 @app.callback(
     Output("distance_graph", "figure"),
-    [Input("labels", "value")])
-def filter_heatmap(cols):
-    confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=",", skiprows=0)
-    index_list = confounding_df.loc[confounding_df['sex'].isin(cols)].index.tolist()
+    Input({'type': 'filter-checklist-distance', 'index': ALL}, 'value'),
+    Input({'type': 'filter-range-slider-distance', 'index': ALL}, 'value'),
+)
+def filter_heatmap(checklist_values, range_values):
+    confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=";", skiprows=0)
+    confounding_length = len(confounding_meta.index)
+
+    # Filter data based on active filters
+    checklist_index = range_index = 0
+    for j in range(0, confounding_length):
+        col = confounding_meta.iloc[j]["name"]
+        data_type = confounding_meta.iloc[j]['data_type']
+        if data_type == 'continuous':
+            range_list = range_values[range_index]
+            confounding_df = confounding_df.loc[confounding_df[col].between(range_list[0], range_list[1])]
+            range_index += 1
+        elif data_type == 'discrete':
+            checklist = checklist_values[checklist_index]
+            confounding_df = confounding_df.loc[confounding_df[col].isin(checklist)]
+            checklist_index += 1
+
+    index_list = confounding_df.index.tolist()
     df = distance_df[distance_df.index.isin(index_list)]
     data = {
         'z': df.values.tolist(),
@@ -201,6 +234,14 @@ def filter_heatmap(cols):
     }
     layout = go.Layout(
         title='Distance matrix',
+        xaxis={
+            "title": "",
+            "showticklabels": False,
+        },
+        yaxis={
+            "title": "",
+            "showticklabels": False,
+        },
     )
     fig = go.Figure(data=go.Heatmap(data), layout=layout)
     return fig
@@ -380,32 +421,32 @@ def renderScatterPlot():
     ])
 
 
-@app.callback(
-    Output('hover-data', 'children'),
-    Input('basic-interactions', 'hoverData'))
-def display_hover_data(hoverData):
-    return json.dumps(hoverData, indent=2)
-
-
-@app.callback(
-    Output('click-data', 'children'),
-    Input('basic-interactions', 'clickData'))
-def display_click_data(clickData):
-    return json.dumps(clickData, indent=2)
-
-
-@app.callback(
-    Output('selected-data', 'children'),
-    Input('basic-interactions', 'selectedData'))
-def display_selected_data(selectedData):
-    return json.dumps(selectedData, indent=2)
-
-
-@app.callback(
-    Output('relayout-data', 'children'),
-    Input('basic-interactions', 'relayoutData'))
-def display_relayout_data(relayoutData):
-    return json.dumps(relayoutData, indent=2)
+# @app.callback(
+#     Output('hover-data', 'children'),
+#     Input('basic-interactions', 'hoverData'))
+# def display_hover_data(hoverData):
+#     return json.dumps(hoverData, indent=2)
+#
+#
+# @app.callback(
+#     Output('click-data', 'children'),
+#     Input('basic-interactions', 'clickData'))
+# def display_click_data(clickData):
+#     return json.dumps(clickData, indent=2)
+#
+#
+# @app.callback(
+#     Output('selected-data', 'children'),
+#     Input('basic-interactions', 'selectedData'))
+# def display_selected_data(selectedData):
+#     return json.dumps(selectedData, indent=2)
+#
+#
+# @app.callback(
+#     Output('relayout-data', 'children'),
+#     Input('basic-interactions', 'relayoutData'))
+# def display_relayout_data(relayoutData):
+#     return json.dumps(relayoutData, indent=2)
 
 
 def confidence_ellipse(x, y, n_std=1.96, size=100):

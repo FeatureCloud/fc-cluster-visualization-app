@@ -66,10 +66,9 @@ def renderConfounders():
     Input('k-confounders', 'value'))
 def filter_k_confounders(value):
     # to be changed later for an automatic counting
-    confounding_df = pd.read_csv(f'data/all_confounders_{value}.csv', delimiter=",", skiprows=0)
+    confounding_df = pd.read_csv(f'data/all_confounders_{value}.csv', delimiter=";", skiprows=0)
     cluster_values_list = confounding_df.cluster.unique()
-    nr_of_confounding_factors = 2
-    # nr_of_clusters = confounding_df.cluster.nunique()
+    nr_of_confounding_factors = len(confounding_meta.index)
     nr_rows = nr_of_confounding_factors * 2
     nr_cols = nr_of_confounding_factors
 
@@ -111,7 +110,7 @@ def filter_k_confounders(value):
         color = DEFAULT_PLOTLY_COLORS[i]
         df = confounding_df[confounding_df['cluster'] == i]
         for j in range(0, len(confounding_meta.index)):
-            if (confounding_meta.iloc[j]['data_type'] == 'continuous'):
+            if confounding_meta.iloc[j]['data_type'] == 'continuous':
                 # add histogram
                 bar_continuous = go.Histogram(
                     x=df[confounding_meta.iloc[j]['name']],
@@ -120,7 +119,7 @@ def filter_k_confounders(value):
                     showlegend=False,
                 )
                 fig.add_trace(bar_continuous, row=i+nr_cols, col=j+1)
-            elif (confounding_meta.iloc[j]['data_type'] == 'discrete'):
+            elif confounding_meta.iloc[j]['data_type'] == 'discrete':
                 col = confounding_meta.iloc[j]['name']
                 # add pie chart
                 pie_values_list = []
@@ -128,8 +127,8 @@ def filter_k_confounders(value):
 
                 for discrete_val in discrete_val_list:
                     pie_values_list.append(df[df[col] == discrete_val].count()[col])
-                fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list), row=i + nr_cols, col=j + 1)
-
+                fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list, showlegend=False), row=i + nr_cols, col=j + 1)
+    fig.update_layout(height=1000, width=1000)
     return fig
 
 

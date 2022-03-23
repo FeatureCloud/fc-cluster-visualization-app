@@ -57,7 +57,7 @@ def render_content(tab):
 
 def renderConfounders():
     html_elem_list = [html.Label('K'), dcc.Dropdown([2, 3], 2, id='k-confounders', style={'width': '20vh'})] + \
-        getConfoundingFactorsFilter('confounders') + [dcc.Graph(id='confounders-scatter')]
+        getConfoundingFactorsFilter('confounders') + [dcc.Graph(id='confounders-scatter',style={'width': '180vh', 'height': '100vh'})]
     return html.Div(html_elem_list)
 
 
@@ -69,7 +69,7 @@ def filter_k_confounders(value):
     confounding_df = pd.read_csv(f'data/all_confounders_{value}.csv', delimiter=";", skiprows=0)
     cluster_values_list = confounding_df.cluster.unique()
     nr_of_confounding_factors = len(confounding_meta.index)
-    nr_rows = nr_of_confounding_factors * 2
+    nr_rows = nr_of_confounding_factors + value
     nr_cols = nr_of_confounding_factors
 
     specs, subplot_titles = getSpecsForMatrix(nr_rows, nr_cols)
@@ -110,17 +110,18 @@ def filter_k_confounders(value):
         color = DEFAULT_PLOTLY_COLORS[i]
         df = confounding_df[confounding_df['cluster'] == i]
         for j in range(0, len(confounding_meta.index)):
-            if confounding_meta.iloc[j]['data_type'] == 'continuous':
+            col = confounding_meta.iloc[j]['name']
+            data_type = confounding_meta.iloc[j]['data_type']
+            if data_type == 'continuous':
                 # add histogram
                 bar_continuous = go.Histogram(
-                    x=df[confounding_meta.iloc[j]['name']],
+                    x=df[col],
                     marker={'color': color},
-                    hovertemplate='Age group: %{x}<br>Count: %{y}',
+                    hovertemplate=col.capitalize() + ' group: %{x}<br>Count: %{y}',
                     showlegend=False,
                 )
                 fig.add_trace(bar_continuous, row=i+nr_cols, col=j+1)
-            elif confounding_meta.iloc[j]['data_type'] == 'discrete':
-                col = confounding_meta.iloc[j]['name']
+            elif data_type == 'discrete':
                 # add pie chart
                 pie_values_list = []
                 discrete_val_list = confounding_df[col].unique()
@@ -128,7 +129,6 @@ def filter_k_confounders(value):
                 for discrete_val in discrete_val_list:
                     pie_values_list.append(df[df[col] == discrete_val].count()[col])
                 fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list, showlegend=False), row=i + nr_cols, col=j + 1)
-    fig.update_layout(height=1000, width=1000)
     return fig
 
 

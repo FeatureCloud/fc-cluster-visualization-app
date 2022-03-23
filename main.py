@@ -12,9 +12,9 @@ from plotly.tools import DEFAULT_PLOTLY_COLORS
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+# external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-app = Dash(__name__, external_stylesheets=external_stylesheets)
+app = Dash(__name__)#, external_stylesheets=external_stylesheets)
 
 styles = {
     'pre': {
@@ -24,7 +24,7 @@ styles = {
 }
 
 app.layout = html.Div([
-    html.H1('Visualization App'),
+    html.H2('Visualization App'),
     dcc.Tabs(id="tabs-ct", value='tab-confounders', children=[
         dcc.Tab(label='Confounders', value='tab-confounders'),
         dcc.Tab(label='Distances', value='tab-distances'),
@@ -32,11 +32,12 @@ app.layout = html.Div([
         dcc.Tab(label='Scree plot', value='tab-scree-plot'),
         # dcc.Tab(label='Scatter plot', value='tab-scatter-plot'),
     ]),
-    html.Div(id='tabs-content-ct')
+    html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'})
 ])
 
 distance_df = pd.read_csv("data/distanceMatrix.csv", delimiter=" ", skiprows=0, index_col=0)
 confounding_meta = pd.read_csv(f'data/confoundingData.meta', delimiter=";", skiprows=0)
+
 
 @app.callback(
     Output('tabs-content-ct', 'children'),
@@ -66,17 +67,25 @@ def renderConfounders():
                 style={'width': '100%', 'display': 'block', 'margin-top': '20px'}
             ),
             html.Div(getConfoundingFactorsFilter('confounders'), style={'height': '16vh'}),
-            dcc.Graph(id='confounders-scatter', style={'width': '180vh', 'height': '100vh'})
+            dcc.Graph(id='confounders-scatter', style={'width': '150vh', 'height': '80vh'})
         ]
     )
 
 
 @app.callback(
     Output('confounders-scatter', 'figure'),
-    Input('k-confounders', 'value'))
-def filter_k_confounders(value):
+    Input('k-confounders', 'value'),
+    Input({'type': 'filter-checklist-confounders', 'index': ALL}, 'value'),
+    Input({'type': 'filter-range-slider-confounders', 'index': ALL}, 'value'),
+)
+def filter_k_confounders(value, checklist_values, range_values):
     # to be changed later for an automatic counting
     confounding_df = pd.read_csv(f'data/all_confounders_{value}.csv', delimiter=";", skiprows=0)
+
+    # filter base dataframe
+    index_list = filterDataframeOnCounfoundingFactors(confounding_df, checklist_values, range_values)
+    confounding_df = confounding_df[confounding_df.index.isin(index_list)]
+
     cluster_values_list = confounding_df.cluster.unique()
     nr_of_confounding_factors = len(confounding_meta.index)
     nr_rows = nr_of_confounding_factors + value
@@ -130,7 +139,7 @@ def filter_k_confounders(value):
                     hovertemplate=col.capitalize() + ' group: %{x}<br>Count: %{y}',
                     showlegend=False,
                 )
-                fig.add_trace(bar_continuous, row=i+nr_cols, col=j+1)
+                fig.add_trace(bar_continuous, row=i + nr_cols, col=j + 1)
             elif data_type == 'discrete':
                 # add pie chart
                 pie_values_list = []
@@ -138,93 +147,19 @@ def filter_k_confounders(value):
 
                 for discrete_val in discrete_val_list:
                     pie_values_list.append(df[df[col] == discrete_val].count()[col])
-                fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list, showlegend=False), row=i + nr_cols, col=j + 1)
+                fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list, showlegend=False),
+                              row=i + nr_cols, col=j + 1)
     return fig
 
 
-def getSpecsForMatrix(rows, cols):
-    specs = []
-    subplot_titles = []
-    for i in range(1, rows + 1):
-        current_specs_row = []
-        if i == 1:
-            current_specs_row.append({'rowspan': cols, 'colspan': cols})
-            subplot_titles.append("Confidence ellipsis")
-            for j in range(1, cols):
-                current_specs_row.append(None)
-        elif i <= cols:
-            for j in range(1, cols + 1):
-                current_specs_row.append(None)
-        else:
-            for j in range(0, len(confounding_meta.index)):
-                current_specs_row.append({'type': 'xy' if confounding_meta.iloc[j]['data_type'] == 'continuous' else 'pie'})
-                subplot_titles.append(confounding_meta.iloc[j]['name'].capitalize())
-        specs.append(current_specs_row)
-    return specs, subplot_titles
-
-def getConfoundingFactorsFilter(id_pre_tag):
-    html_elem_list = []
-    confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=";", skiprows=0)
-    confounding_length = len(confounding_meta.index)
-    for j in range(0, confounding_length):
-        col = confounding_meta.iloc[j]["name"]
-        data_type = confounding_meta.iloc[j]['data_type']
-        if data_type == 'continuous':
-            # add range slider
-            col_min = confounding_df[col].min()
-            col_max = confounding_df[col].max()
-            html_elem_list.append(
-                html.Div(
-                    [
-                        html.Span(col.capitalize(), style={'float': 'left', 'width': '15%'}),
-                        html.Span(
-                            dcc.RangeSlider(
-                                col_min, col_max, value=[col_min, col_max],
-                                id={
-                                    'type': f'filter-range-slider-{id_pre_tag}',
-                                    'index': j
-                                }
-                            ),
-                            style={'width': '75%', 'float': 'left'}
-                        ),
-                    ],
-                    style={'width': '100%', 'display': 'block'}
-                )
-            )
-        elif data_type == 'discrete':
-            # add checklist
-            discrete_val_list = confounding_df[col].unique()
-            html_elem_list.append(
-                html.Div(
-                    [
-                        html.Span(col.capitalize(), style={'float': 'left', 'width': '15%'}),
-                        html.Span(
-                            dcc.Checklist(
-                                discrete_val_list, discrete_val_list, inline=True,
-                                id={
-                                    'type': f'filter-checklist-{id_pre_tag}',
-                                    'index': j
-                                }
-                            ),
-                            style={'width': '75%', 'float': 'left'}
-                        ),
-                    ],
-                    style={'width': '100%', 'display': 'block'}
-                )
-            )
-    return html_elem_list
-
-
 def renderDistances():
-    return html.Div(
-        [
-            dcc.Graph(id="distance_graph"),
-            html.Div(
-                children=getConfoundingFactorsFilter('distance'),
-                style={'margin': '0 auto', 'width': '70%'}
-            )
-        ]
-    )
+    return html.Div([
+        dcc.Graph(id="distance_graph"),
+        html.Div(
+            children=getConfoundingFactorsFilter('distance'),
+            style={'margin': '0 auto', 'width': '70%'}
+        )
+    ])
 
 
 @app.callback(
@@ -234,23 +169,7 @@ def renderDistances():
 )
 def filter_heatmap(checklist_values, range_values):
     confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=";", skiprows=0)
-    confounding_length = len(confounding_meta.index)
-
-    # Filter data based on active filters
-    checklist_index = range_index = 0
-    for j in range(0, confounding_length):
-        col = confounding_meta.iloc[j]["name"]
-        data_type = confounding_meta.iloc[j]['data_type']
-        if data_type == 'continuous':
-            range_list = range_values[range_index]
-            confounding_df = confounding_df.loc[confounding_df[col].between(range_list[0], range_list[1])]
-            range_index += 1
-        elif data_type == 'discrete':
-            checklist = checklist_values[checklist_index]
-            confounding_df = confounding_df.loc[confounding_df[col].isin(checklist)]
-            checklist_index += 1
-
-    index_list = confounding_df.index.tolist()
+    index_list = filterDataframeOnCounfoundingFactors(confounding_df, checklist_values, range_values)
     df = distance_df[distance_df.index.isin(index_list)]
     data = {
         'z': df.values.tolist(),
@@ -270,6 +189,24 @@ def filter_heatmap(checklist_values, range_values):
     )
     fig = go.Figure(data=go.Heatmap(data), layout=layout)
     return fig
+
+
+def filterDataframeOnCounfoundingFactors(confounding_df, checklist_values, range_values):
+    confounding_length = len(confounding_meta.index)
+    # Filter data based on active filters
+    checklist_index = range_index = 0
+    for j in range(0, confounding_length):
+        col = confounding_meta.iloc[j]["name"]
+        data_type = confounding_meta.iloc[j]['data_type']
+        if data_type == 'continuous':
+            range_list = range_values[range_index]
+            confounding_df = confounding_df.loc[confounding_df[col].between(range_list[0], range_list[1])]
+            range_index += 1
+        elif data_type == 'discrete':
+            checklist = checklist_values[checklist_index]
+            confounding_df = confounding_df.loc[confounding_df[col].isin(checklist)]
+            checklist_index += 1
+    return confounding_df.index.tolist()
 
 
 def renderClusteringQuality():
@@ -528,6 +465,80 @@ def confidence_ellipse(x, y, n_std=1.96, size=100):
         path += f'L{ellipse_coords[k, 0]}, {ellipse_coords[k, 1]}'
     path += ' Z'
     return path
+
+def getSpecsForMatrix(rows, cols):
+    specs = []
+    subplot_titles = []
+    for i in range(1, rows + 1):
+        current_specs_row = []
+        if i == 1:
+            current_specs_row.append({'rowspan': cols, 'colspan': cols})
+            subplot_titles.append("Confidence ellipsis")
+            for j in range(1, cols):
+                current_specs_row.append(None)
+        elif i <= cols:
+            for j in range(1, cols + 1):
+                current_specs_row.append(None)
+        else:
+            for j in range(0, len(confounding_meta.index)):
+                current_specs_row.append(
+                    {'type': 'xy' if confounding_meta.iloc[j]['data_type'] == 'continuous' else 'pie'})
+                subplot_titles.append(confounding_meta.iloc[j]['name'].capitalize())
+        specs.append(current_specs_row)
+    return specs, subplot_titles
+
+
+def getConfoundingFactorsFilter(id_pre_tag):
+    html_elem_list = []
+    confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=";", skiprows=0)
+    confounding_length = len(confounding_meta.index)
+    for j in range(0, confounding_length):
+        col = confounding_meta.iloc[j]["name"]
+        data_type = confounding_meta.iloc[j]['data_type']
+        if data_type == 'continuous':
+            # add range slider
+            col_min = confounding_df[col].min()
+            col_max = confounding_df[col].max()
+            html_elem_list.append(
+                html.Div(
+                    [
+                        html.Span(col.capitalize(), style={'float': 'left', 'width': '15%'}),
+                        html.Span(
+                            dcc.RangeSlider(
+                                col_min, col_max, value=[col_min, col_max],
+                                id={
+                                    'type': f'filter-range-slider-{id_pre_tag}',
+                                    'index': j
+                                }
+                            ),
+                            style={'width': '75%', 'float': 'left'}
+                        ),
+                    ],
+                    style={'width': '100%', 'display': 'block'}
+                )
+            )
+        elif data_type == 'discrete':
+            # add checklist
+            discrete_val_list = confounding_df[col].unique()
+            html_elem_list.append(
+                html.Div(
+                    [
+                        html.Span(col.capitalize(), style={'float': 'left', 'width': '15%'}),
+                        html.Span(
+                            dcc.Checklist(
+                                discrete_val_list, discrete_val_list, inline=True,
+                                id={
+                                    'type': f'filter-checklist-{id_pre_tag}',
+                                    'index': j
+                                }
+                            ),
+                            style={'width': '75%', 'float': 'left'}
+                        ),
+                    ],
+                    style={'width': '100%', 'display': 'block'}
+                )
+            )
+    return html_elem_list
 
 
 if __name__ == '__main__':

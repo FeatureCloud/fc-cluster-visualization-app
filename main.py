@@ -56,9 +56,19 @@ def render_content(tab):
 
 
 def renderConfounders():
-    html_elem_list = [html.Label('K'), dcc.Dropdown([2, 3], 2, id='k-confounders', style={'width': '20vh'})] + \
-        getConfoundingFactorsFilter('confounders') + [dcc.Graph(id='confounders-scatter',style={'width': '180vh', 'height': '100vh'})]
-    return html.Div(html_elem_list)
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.Span('K', style={'float': 'left', 'width': '15%'}),
+                    html.Span(dcc.Dropdown([2, 3], 2, id='k-confounders', style={'width': '75%', 'float': 'left'}))
+                ],
+                style={'width': '100%', 'display': 'block', 'margin-top': '20px'}
+            ),
+            html.Div(getConfoundingFactorsFilter('confounders'), style={'height': '16vh'}),
+            dcc.Graph(id='confounders-scatter', style={'width': '180vh', 'height': '100vh'})
+        ]
+    )
 
 
 @app.callback(

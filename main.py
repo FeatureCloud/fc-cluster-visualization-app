@@ -163,27 +163,43 @@ def getConfoundingFactorsFilter(id_pre_tag):
             # add range slider
             col_min = confounding_df[col].min()
             col_max = confounding_df[col].max()
-            html_elem_list.append(html.Label(col.capitalize()))
             html_elem_list.append(
-                dcc.RangeSlider(
-                    col_min, col_max, value=[col_min, col_max],
-                    id={
-                        'type': f'filter-range-slider-{id_pre_tag}',
-                        'index': j
-                    }
+                html.Div(
+                    [
+                        html.Span(col.capitalize(), style={'float': 'left', 'width': '15%'}),
+                        html.Span(
+                            dcc.RangeSlider(
+                                col_min, col_max, value=[col_min, col_max],
+                                id={
+                                    'type': f'filter-range-slider-{id_pre_tag}',
+                                    'index': j
+                                }
+                            ),
+                            style={'width': '75%', 'float': 'left'}
+                        ),
+                    ],
+                    style={'width': '100%', 'display': 'block'}
                 )
             )
         elif data_type == 'discrete':
             # add checklist
             discrete_val_list = confounding_df[col].unique()
-            html_elem_list.append(html.Label(col.capitalize()))
             html_elem_list.append(
-                dcc.Checklist(
-                    discrete_val_list, discrete_val_list, inline=True,
-                    id={
-                        'type': f'filter-checklist-{id_pre_tag}',
-                        'index': j
-                    }
+                html.Div(
+                    [
+                        html.Span(col.capitalize(), style={'float': 'left', 'width': '15%'}),
+                        html.Span(
+                            dcc.Checklist(
+                                discrete_val_list, discrete_val_list, inline=True,
+                                id={
+                                    'type': f'filter-checklist-{id_pre_tag}',
+                                    'index': j
+                                }
+                            ),
+                            style={'width': '75%', 'float': 'left'}
+                        ),
+                    ],
+                    style={'width': '100%', 'display': 'block'}
                 )
             )
     return html_elem_list

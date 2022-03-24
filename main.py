@@ -1,6 +1,7 @@
 import json
 
 from dash import Dash, dcc, html
+import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, ALL
 import plotly.express as px
 import plotly.graph_objects as go
@@ -12,9 +13,7 @@ from plotly.tools import DEFAULT_PLOTLY_COLORS
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-# external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
-app = Dash(__name__)#, external_stylesheets=external_stylesheets)
+app = Dash(__name__, external_stylesheets=[dbc.themes.COSMO])
 
 styles = {
     'pre': {
@@ -30,7 +29,7 @@ app.layout = html.Div([
         dcc.Tab(label='Distances', value='tab-distances'),
         dcc.Tab(label='Clustering Quality', value='tab-clustering-quality'),
         dcc.Tab(label='Scree plot', value='tab-scree-plot'),
-        # dcc.Tab(label='Scatter plot', value='tab-scatter-plot'),
+        dcc.Tab(label='Scatter plot', value='tab-scatter-plot'),
     ]),
     html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'})
 ])
@@ -45,29 +44,28 @@ confounding_meta = pd.read_csv(f'data/confoundingData.meta', delimiter=";", skip
 )
 def render_content(tab):
     if tab == 'tab-confounders':
-        return renderConfounders()
+        return render_confounders()
     elif tab == 'tab-distances':
-        return renderDistances()
+        return render_distances()
     elif tab == 'tab-clustering-quality':
-        return renderClusteringQuality()
+        return render_clustering_quality()
     elif tab == 'tab-scree-plot':
-        return renderScreePlot()
-    # elif tab == 'tab-scatter-plot':
-    #     return renderScatterPlot()
+        return render_scree_plot()
+    elif tab == 'tab-scatter-plot':
+        return render_scatter_plot()
 
 
-def renderConfounders():
+def render_confounders():
     return html.Div(
         [
             html.Div(
                 [
                     html.Span('K', style={'float': 'left', 'width': '15%'}),
-                    html.Span(dcc.Dropdown([2, 3], 2, id='k-confounders', style={'width': '75%', 'float': 'left'}))
+                    html.Span(dcc.Dropdown([2, 3], 2, id='k-confounders', className='fc-dropdown', clearable=False, style={'width': '75%', 'float': 'left'}))
                 ],
-                style={'width': '100%', 'display': 'block', 'margin-top': '20px'}
             ),
-            html.Div(getConfoundingFactorsFilter('confounders'), style={'height': '16vh'}),
-            dcc.Graph(id='confounders-scatter', style={'width': '150vh', 'height': '80vh'})
+            html.Div(get_confounding_factors_filter('confounders'), className='confounding-factors-filter-ct'),
+            dcc.Graph(id='confounders-scatter', className='confounders-scatter')
         ]
     )
 
@@ -83,7 +81,7 @@ def filter_k_confounders(value, checklist_values, range_values):
     confounding_df = pd.read_csv(f'data/all_confounders_{value}.csv', delimiter=";", skiprows=0)
 
     # filter base dataframe
-    index_list = filterDataframeOnCounfoundingFactors(confounding_df, checklist_values, range_values)
+    index_list = filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, range_values)
     confounding_df = confounding_df[confounding_df.index.isin(index_list)]
 
     cluster_values_list = confounding_df.cluster.unique()
@@ -91,7 +89,7 @@ def filter_k_confounders(value, checklist_values, range_values):
     nr_rows = nr_of_confounding_factors + value
     nr_cols = nr_of_confounding_factors
 
-    specs, subplot_titles = getSpecsForMatrix(nr_rows, nr_cols)
+    specs, subplot_titles = get_specs_for_matrix(nr_rows, nr_cols)
     fig = make_subplots(
         rows=nr_rows,
         cols=nr_cols,
@@ -152,11 +150,11 @@ def filter_k_confounders(value, checklist_values, range_values):
     return fig
 
 
-def renderDistances():
+def render_distances():
     return html.Div([
         dcc.Graph(id="distance_graph"),
         html.Div(
-            children=getConfoundingFactorsFilter('distance'),
+            children=get_confounding_factors_filter('distance'),
             style={'margin': '0 auto', 'width': '70%'}
         )
     ])
@@ -169,7 +167,7 @@ def renderDistances():
 )
 def filter_heatmap(checklist_values, range_values):
     confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=";", skiprows=0)
-    index_list = filterDataframeOnCounfoundingFactors(confounding_df, checklist_values, range_values)
+    index_list = filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, range_values)
     df = distance_df[distance_df.index.isin(index_list)]
     data = {
         'z': df.values.tolist(),
@@ -191,7 +189,7 @@ def filter_heatmap(checklist_values, range_values):
     return fig
 
 
-def filterDataframeOnCounfoundingFactors(confounding_df, checklist_values, range_values):
+def filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, range_values):
     confounding_length = len(confounding_meta.index)
     # Filter data based on active filters
     checklist_index = range_index = 0
@@ -209,10 +207,10 @@ def filterDataframeOnCounfoundingFactors(confounding_df, checklist_values, range
     return confounding_df.index.tolist()
 
 
-def renderClusteringQuality():
+def render_clustering_quality():
     return html.Div([
         html.P("K:"),
-        dcc.Dropdown([2, 3], 2, id='k-labels'),
+        dcc.Dropdown([2, 3], 2, id='k-labels', className='fc-dropdown', clearable=False),
         dcc.Graph(id="cluster_quality_graph"),
     ])
 
@@ -266,7 +264,7 @@ def filter_k_label(value):
     return fig
 
 
-def renderScreePlot():
+def render_scree_plot():
     # define URL where dataset is located
     url = "https://raw.githubusercontent.com/JWarmenhoven/ISLR-python/master/Notebooks/Data/USArrests.csv"
 
@@ -315,7 +313,7 @@ def renderScreePlot():
         )])
 
 
-def renderScatterPlot():
+def render_scatter_plot():
     df = pd.DataFrame({
         "x": [1, 2, 1, 2],
         "y": [1, 2, 3, 4],
@@ -383,32 +381,32 @@ def renderScatterPlot():
     ])
 
 
-# @app.callback(
-#     Output('hover-data', 'children'),
-#     Input('basic-interactions', 'hoverData'))
-# def display_hover_data(hoverData):
-#     return json.dumps(hoverData, indent=2)
-#
-#
-# @app.callback(
-#     Output('click-data', 'children'),
-#     Input('basic-interactions', 'clickData'))
-# def display_click_data(clickData):
-#     return json.dumps(clickData, indent=2)
-#
-#
-# @app.callback(
-#     Output('selected-data', 'children'),
-#     Input('basic-interactions', 'selectedData'))
-# def display_selected_data(selectedData):
-#     return json.dumps(selectedData, indent=2)
-#
-#
-# @app.callback(
-#     Output('relayout-data', 'children'),
-#     Input('basic-interactions', 'relayoutData'))
-# def display_relayout_data(relayoutData):
-#     return json.dumps(relayoutData, indent=2)
+@app.callback(
+    Output('hover-data', 'children'),
+    Input('basic-interactions', 'hoverData'))
+def display_hover_data(hoverData):
+    return json.dumps(hoverData, indent=2)
+
+
+@app.callback(
+    Output('click-data', 'children'),
+    Input('basic-interactions', 'clickData'))
+def display_click_data(clickData):
+    return json.dumps(clickData, indent=2)
+
+
+@app.callback(
+    Output('selected-data', 'children'),
+    Input('basic-interactions', 'selectedData'))
+def display_selected_data(selectedData):
+    return json.dumps(selectedData, indent=2)
+
+
+@app.callback(
+    Output('relayout-data', 'children'),
+    Input('basic-interactions', 'relayoutData'))
+def display_relayout_data(relayoutData):
+    return json.dumps(relayoutData, indent=2)
 
 
 def confidence_ellipse(x, y, n_std=1.96, size=100):
@@ -466,7 +464,7 @@ def confidence_ellipse(x, y, n_std=1.96, size=100):
     path += ' Z'
     return path
 
-def getSpecsForMatrix(rows, cols):
+def get_specs_for_matrix(rows, cols):
     specs = []
     subplot_titles = []
     for i in range(1, rows + 1):
@@ -488,7 +486,7 @@ def getSpecsForMatrix(rows, cols):
     return specs, subplot_titles
 
 
-def getConfoundingFactorsFilter(id_pre_tag):
+def get_confounding_factors_filter(id_pre_tag):
     html_elem_list = []
     confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=";", skiprows=0)
     confounding_length = len(confounding_meta.index)
@@ -530,9 +528,10 @@ def getConfoundingFactorsFilter(id_pre_tag):
                                 id={
                                     'type': f'filter-checklist-{id_pre_tag}',
                                     'index': j
-                                }
+                                },
+                                className="fc-checklist"
                             ),
-                            style={'width': '75%', 'float': 'left'}
+                            style={'width': '75%', 'float': 'left', 'margin-left': '20px'}
                         ),
                     ],
                     style={'width': '100%', 'display': 'block'}

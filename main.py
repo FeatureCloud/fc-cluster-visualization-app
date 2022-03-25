@@ -13,7 +13,7 @@ from plotly.tools import DEFAULT_PLOTLY_COLORS
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.COSMO])
+app = Dash(__name__, external_stylesheets=[dbc.themes.COSMO], title='FeatureCloud Visualization App')
 
 styles = {
     'pre': {
@@ -23,7 +23,7 @@ styles = {
 }
 
 app.layout = html.Div([
-    html.H2('Visualization App'),
+    html.H2('Visualization App', className='fc-header'),
     dcc.Tabs(id="tabs-ct", value='tab-confounders', children=[
         dcc.Tab(label='Confounders', value='tab-confounders'),
         dcc.Tab(label='Distances', value='tab-distances'),
@@ -61,7 +61,8 @@ def render_confounders():
             html.Div(
                 [
                     html.Span('K', style={'float': 'left', 'width': '15%'}),
-                    html.Span(dcc.Dropdown([2, 3], 2, id='k-confounders', className='fc-dropdown', clearable=False, style={'width': '75%', 'float': 'left'}))
+                    html.Span(dcc.Dropdown([2, 3], 2, id='k-confounders', className='fc-dropdown', clearable=False,
+                                           style={'width': '75%', 'float': 'left'})),
                 ],
             ),
             html.Div(get_confounding_factors_filter('confounders'), className='confounding-factors-filter-ct'),
@@ -147,6 +148,27 @@ def filter_k_confounders(value, checklist_values, range_values):
                     pie_values_list.append(df[df[col] == discrete_val].count()[col])
                 fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list, showlegend=False),
                               row=i + nr_cols, col=j + 1)
+    # add log transform buttons
+    fig.update_layout(updatemenus=[
+        dict(
+            type="buttons",
+            direction="right",
+            x=0,
+            y=1.1,
+            buttons=list([
+                dict(
+                    args=[{'xaxis': {'type': 'scatter'}}],
+                    label="Linear",
+                    method="relayout"
+                ),
+                dict(
+                    args=[{'xaxis': {'type': 'log'}}],
+                    label="Log",
+                    method="relayout"
+                )
+            ])
+        )
+    ])
     return fig
 
 
@@ -209,8 +231,14 @@ def filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, r
 
 def render_clustering_quality():
     return html.Div([
-        html.P("K:"),
-        dcc.Dropdown([2, 3], 2, id='k-labels', className='fc-dropdown', clearable=False),
+        html.Div(
+            [
+                html.Span('K', style={'float': 'left', 'margin-top': '6px'}),
+                html.Span(dcc.Dropdown([2, 3], 2, id='k-labels', className='fc-dropdown', clearable=False,
+                                       style={'float': 'left'}))
+            ],
+            style={'height': '60px', 'width': '100px', 'margin': '20px 70px'}
+        ),
         dcc.Graph(id="cluster_quality_graph"),
     ])
 
@@ -265,36 +293,12 @@ def filter_k_label(value):
 
 
 def render_scree_plot():
-    # define URL where dataset is located
-    url = "https://raw.githubusercontent.com/JWarmenhoven/ISLR-python/master/Notebooks/Data/USArrests.csv"
-
-    # read in data
-    data = pd.read_csv(url)
-
-    # define columns to use for PCA
-    df = data.iloc[:, 1:5]
-
-    # define scaler
-    scaler = StandardScaler()
-
-    # create copy of DataFrame
-    scaled_df = df.copy()
-
-    # created scaled version of DataFrame
-    scaled_df = pd.DataFrame(scaler.fit_transform(scaled_df), columns=scaled_df.columns)
-
-    # define PCA model to use
-    pca = PCA(n_components=4)
-
-    # fit PCA model to data
-    pca.fit(scaled_df)
-    PC_values = np.arange(pca.n_components_) + 1
-
+    df = pd.read_csv("data/variance_explained.csv", delimiter=';', skiprows=0)
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         mode='lines+markers',
-        x=PC_values,
-        y=pca.explained_variance_ratio_,
+        x=df['component'],
+        y=df['eigenvalue'],
         marker={
             "size": 10,
             "symbol": "circle-open",
@@ -463,6 +467,7 @@ def confidence_ellipse(x, y, n_std=1.96, size=100):
         path += f'L{ellipse_coords[k, 0]}, {ellipse_coords[k, 1]}'
     path += ' Z'
     return path
+
 
 def get_specs_for_matrix(rows, cols):
     specs = []

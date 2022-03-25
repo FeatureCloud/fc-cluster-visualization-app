@@ -10,8 +10,6 @@ import pandas as pd
 import numpy as np
 from plotly.subplots import make_subplots
 from plotly.tools import DEFAULT_PLOTLY_COLORS
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.COSMO], title='FeatureCloud Visualization App')
 
@@ -23,7 +21,7 @@ styles = {
 }
 
 app.layout = html.Div([
-    html.H2('Visualization App', className='fc-header'),
+    html.H2('Cluster Visualization', className='fc-header'),
     dcc.Tabs(id="tabs-ct", value='tab-confounders', children=[
         dcc.Tab(label='Confounders', value='tab-confounders'),
         dcc.Tab(label='Distances', value='tab-distances'),
@@ -36,7 +34,10 @@ app.layout = html.Div([
 
 distance_df = pd.read_csv("data/distanceMatrix.csv", delimiter=" ", skiprows=0, index_col=0)
 confounding_meta = pd.read_csv(f'data/confoundingData.meta', delimiter=";", skiprows=0)
-
+dataframes_by_cluster = {
+    2: pd.read_csv('data/all_confounders_ma_2.csv', delimiter=";", skiprows=0),
+    3: pd.read_csv('data/all_confounders_ma_3.csv', delimiter=";", skiprows=0)
+}
 
 @app.callback(
     Output('tabs-content-ct', 'children'),
@@ -56,35 +57,42 @@ def render_content(tab):
 
 
 def render_confounders():
-    return html.Div(
-        [
+    data_columns = get_data_columns()
+    base_content = [
             html.Div(
                 [
                     html.Span('K', style={'float': 'left', 'width': '15%'}),
                     html.Span(dcc.Dropdown([2, 3], 2, id='k-confounders', className='fc-dropdown', clearable=False,
-                                           style={'width': '75%', 'float': 'left'})),
-                ],
+                                           style={'float': 'left', 'margin-right': '15%'})),
+                    html.Span('X axes', style={'float': 'left', 'margin-top': '5px'}),
+                    html.Span(dcc.Dropdown(data_columns, data_columns[0], id='xaxis-dropdown', className='fc-dropdown',
+                                           clearable=False, style={'float': 'left', 'margin-right': '5%'})),
+                    html.Span('Y axes', style={'float': 'left', 'margin-top': '5px'}),
+                    html.Span(dcc.Dropdown(data_columns, data_columns[1], id='yaxis-dropdown', className='fc-dropdown',
+                                           clearable=False, style={'float': 'left',  'margin-right': '40%'})),
+                ]
             ),
             html.Div(get_confounding_factors_filter('confounders'), className='confounding-factors-filter-ct'),
             dcc.Graph(id='confounders-scatter', className='confounders-scatter')
         ]
-    )
+    return html.Div(base_content)
 
 
 @app.callback(
     Output('confounders-scatter', 'figure'),
     Input('k-confounders', 'value'),
+    Input('xaxis-dropdown', 'value'),
+    Input('yaxis-dropdown', 'value'),
     Input({'type': 'filter-checklist-confounders', 'index': ALL}, 'value'),
     Input({'type': 'filter-range-slider-confounders', 'index': ALL}, 'value'),
 )
-def filter_k_confounders(value, checklist_values, range_values):
+def filter_k_confounders(value, xaxis, yaxis, checklist_values, range_values):
     # to be changed later for an automatic counting
-    confounding_df = pd.read_csv(f'data/all_confounders_{value}.csv', delimiter=";", skiprows=0)
+    confounding_df = dataframes_by_cluster[value]
 
     # filter base dataframe
     index_list = filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, range_values)
     confounding_df = confounding_df[confounding_df.index.isin(index_list)]
-
     cluster_values_list = confounding_df.cluster.unique()
     nr_of_confounding_factors = len(confounding_meta.index)
     nr_rows = nr_of_confounding_factors + value
@@ -101,8 +109,8 @@ def filter_k_confounders(value, checklist_values, range_values):
         color = DEFAULT_PLOTLY_COLORS[i]
         df = confounding_df[confounding_df['cluster'] == i]
         scatter_plot = go.Scatter(
-            x=df['x'],
-            y=df['y'],
+            x=df[xaxis],
+            y=df[yaxis],
             mode='markers',
             name=f'Cluster {i}',
             marker={
@@ -111,8 +119,8 @@ def filter_k_confounders(value, checklist_values, range_values):
             }
         )
         fig.append_trace(scatter_plot, row=1, col=1)
-        path = confidence_ellipse(df['x'],
-                                  df['y'])
+        path = confidence_ellipse(df[xaxis],
+                                  df[yaxis])
         fig.add_shape(
             type='path',
             path=path,
@@ -188,7 +196,7 @@ def render_distances():
     Input({'type': 'filter-range-slider-distance', 'index': ALL}, 'value'),
 )
 def filter_heatmap(checklist_values, range_values):
-    confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=";", skiprows=0)
+    confounding_df = dataframes_by_cluster[3]
     index_list = filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, range_values)
     df = distance_df[distance_df.index.isin(index_list)]
     data = {
@@ -245,7 +253,8 @@ def render_clustering_quality():
 
 @app.callback(
     Output('cluster_quality_graph', 'figure'),
-    Input('k-labels', 'value'))
+    Input('k-labels', 'value')
+)
 def filter_k_label(value):
     df_silhouette = pd.read_csv(f'data/results/K_{str(value)}/silhouette.csv', delimiter=';')
     df_silhouette = df_silhouette.sort_values(["cluster", "y"], ascending=(True, False)).reset_index()
@@ -493,7 +502,7 @@ def get_specs_for_matrix(rows, cols):
 
 def get_confounding_factors_filter(id_pre_tag):
     html_elem_list = []
-    confounding_df = pd.read_csv(f'data/all_confounders_3.csv', delimiter=";", skiprows=0)
+    confounding_df = pd.read_csv(f'data/all_confounders_ma_3.csv', delimiter=";", skiprows=0)
     confounding_length = len(confounding_meta.index)
     for j in range(0, confounding_length):
         col = confounding_meta.iloc[j]["name"]
@@ -543,6 +552,11 @@ def get_confounding_factors_filter(id_pre_tag):
                 )
             )
     return html_elem_list
+
+
+def get_data_columns():
+    # To be changed later to automatic approach
+    return ['x', 'y', 'z']
 
 
 if __name__ == '__main__':

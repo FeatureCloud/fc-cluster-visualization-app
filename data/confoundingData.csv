@@ -1,151 +1,151 @@
-id;age;sex;nationality;height
-1;38;F;RO;159
-2;17;F;DE;175
-3;40;F;CH;162
-4;32;F;HU;183
-5;18;F;HU;193
-6;45;F;RO;159
-7;20;F;BG;186
-8;37;F;BG;198
-9;36;F;RO;198
-10;42;F;DE;159
-11;21;F;CH;168
-12;29;F;HU;166
-13;40;M;HU;196
-14;15;M;RO;155
-15;20;F;BG;166
-16;44;F;BG;154
-17;28;F;RO;151
-18;22;M;DE;155
-19;41;F;CH;178
-20;18;F;HU;164
-21;36;M;HU;186
-22;23;M;RO;163
-23;16;F;BG;173
-24;22;F;BG;172
-25;45;F;RO;165
-26;26;F;DE;178
-27;44;M;CH;166
-28;45;M;HU;174
-29;28;M;HU;185
-30;32;M;RO;194
-31;29;M;BG;186
-32;18;M;BG;187
-33;15;F;RO;198
-34;20;M;DE;152
-35;15;F;CH;186
-36;31;F;HU;185
-37;15;M;HU;199
-38;43;M;RO;164
-39;17;M;BG;175
-40;43;M;BG;162
-41;32;M;PL;185
-42;24;M;PL;175
-43;25;F;PL;191
-44;17;M;PL;150
-45;18;F;PL;164
-46;31;M;PL;191
-47;41;M;PL;165
-48;26;M;PL;197
-49;20;F;PL;170
-50;41;F;PL;150
-51;28;F;PL;158
-52;27;F;RO;167
-53;20;M;DE;168
-54;33;M;CH;185
-55;40;F;HU;150
-56;18;M;HU;198
-57;20;F;RO;196
-58;19;F;BG;167
-59;36;M;BG;200
-60;21;M;RO;198
-61;19;M;DE;170
-62;15;M;CH;159
-63;41;M;HU;182
-64;30;F;HU;189
-65;23;F;RO;168
-66;21;M;BG;165
-67;25;M;BG;189
-68;29;M;RO;181
-69;17;M;DE;158
-70;34;F;CH;154
-71;41;M;HU;185
-72;22;F;HU;191
-73;36;M;RO;174
-74;32;F;BG;187
-75;25;M;BG;193
-76;43;F;RO;195
-77;15;F;DE;179
-78;32;F;CH;171
-79;26;M;HU;179
-80;32;F;HU;198
-81;40;M;RO;180
-82;32;M;BG;195
-83;17;F;BG;168
-84;37;M;RO;159
-85;17;M;DE;175
-86;34;M;CH;195
-87;24;F;HU;191
-88;41;M;HU;189
-89;29;F;RO;170
-90;29;M;BG;160
-91;18;M;BG;184
-92;38;M;PL;152
-93;34;M;PL;200
-94;28;F;PL;149
-95;30;M;PL;175
-96;16;F;PL;151
-97;21;F;PL;184
-98;29;F;PL;160
-99;25;M;PL;166
-100;17;F;PL;149
-101;32;M;PL;168
-102;29;M;PL;155
-103;18;M;RO;176
-104;15;F;DE;172
-105;20;M;CH;191
-106;15;F;HU;178
-107;31;F;HU;178
-108;15;M;RO;179
-109;43;M;BG;178
-110;17;M;BG;159
-111;43;M;RO;194
-112;32;M;DE;152
-113;24;M;CH;150
-114;25;F;HU;178
-115;17;M;HU;189
-116;18;F;RO;164
-117;31;M;BG;193
-118;41;M;BG;162
-119;26;M;RO;185
-120;20;F;DE;177
-121;41;F;CH;150
-122;28;F;HU;171
-123;27;F;HU;195
-124;20;M;RO;172
-125;33;M;BG;155
-126;40;F;BG;168
-127;18;M;RO;171
-128;20;F;DE;155
-129;19;F;CH;189
-130;36;M;HU;190
-131;21;M;HU;190
-132;19;M;RO;150
-133;15;M;BG;180
-134;41;M;BG;161
-135;30;F;RO;175
-136;23;F;DE;172
-137;21;M;CH;182
-138;25;M;HU;156
-139;29;M;HU;151
-140;17;M;RO;191
-141;34;F;BG;200
-142;41;M;BG;186
-143;22;F;PL;186
-144;36;M;PL;158
-145;32;F;PL;177
-146;25;M;PL;198
-147;43;M;PL;192
-148;15;M;PL;163
-149;32;M;PL;165
-150;26;M;PL;152
+id;age;sex;race;height
+1;38;F;Caucasian;159
+2;17;F;Asian;175
+3;40;F;African-American;162
+4;32;F;Indian;183
+5;18;F;Indian;193
+6;45;F;Caucasian;159
+7;20;F;Pacific Islander;186
+8;37;F;Pacific Islander;198
+9;36;F;Caucasian;198
+10;42;F;Asian;159
+11;21;F;African-American;168
+12;29;F;Indian;166
+13;40;M;Indian;196
+14;15;M;Caucasian;155
+15;20;F;Pacific Islander;166
+16;44;F;Pacific Islander;154
+17;28;F;Caucasian;151
+18;22;M;Asian;155
+19;41;F;African-American;178
+20;18;F;Indian;164
+21;36;M;Indian;186
+22;23;M;Caucasian;163
+23;16;F;Pacific Islander;173
+24;22;F;Pacific Islander;172
+25;45;F;Caucasian;165
+26;26;F;Asian;178
+27;44;M;African-American;166
+28;45;M;Indian;174
+29;28;M;Indian;185
+30;32;M;Caucasian;194
+31;29;M;Pacific Islander;186
+32;18;M;Pacific Islander;187
+33;15;F;Caucasian;198
+34;20;M;Asian;152
+35;15;F;African-American;186
+36;31;F;Indian;185
+37;15;M;Indian;199
+38;43;M;Caucasian;164
+39;17;M;Pacific Islander;175
+40;43;M;Pacific Islander;162
+41;32;M;Hispanic/Latino;185
+42;24;M;Hispanic/Latino;175
+43;25;F;Hispanic/Latino;191
+44;17;M;Hispanic/Latino;150
+45;18;F;Hispanic/Latino;164
+46;31;M;Hispanic/Latino;191
+47;41;M;Hispanic/Latino;165
+48;26;M;Hispanic/Latino;197
+49;20;F;Hispanic/Latino;170
+50;41;F;Hispanic/Latino;150
+51;28;F;Hispanic/Latino;158
+52;27;F;Caucasian;167
+53;20;M;Asian;168
+54;33;M;African-American;185
+55;40;F;Indian;150
+56;18;M;Indian;198
+57;20;F;Caucasian;196
+58;19;F;Pacific Islander;167
+59;36;M;Pacific Islander;200
+60;21;M;Caucasian;198
+61;19;M;Asian;170
+62;15;M;African-American;159
+63;41;M;Indian;182
+64;30;F;Indian;189
+65;23;F;Caucasian;168
+66;21;M;Pacific Islander;165
+67;25;M;Pacific Islander;189
+68;29;M;Caucasian;181
+69;17;M;Asian;158
+70;34;F;African-American;154
+71;41;M;Indian;185
+72;22;F;Indian;191
+73;36;M;Caucasian;174
+74;32;F;Pacific Islander;187
+75;25;M;Pacific Islander;193
+76;43;F;Caucasian;195
+77;15;F;Asian;179
+78;32;F;African-American;171
+79;26;M;Indian;179
+80;32;F;Indian;198
+81;40;M;Caucasian;180
+82;32;M;Pacific Islander;195
+83;17;F;Pacific Islander;168
+84;37;M;Caucasian;159
+85;17;M;Asian;175
+86;34;M;African-American;195
+87;24;F;Indian;191
+88;41;M;Indian;189
+89;29;F;Caucasian;170
+90;29;M;Pacific Islander;160
+91;18;M;Pacific Islander;184
+92;38;M;Hispanic/Latino;152
+93;34;M;Hispanic/Latino;200
+94;28;F;Hispanic/Latino;149
+95;30;M;Hispanic/Latino;175
+96;16;F;Hispanic/Latino;151
+97;21;F;Hispanic/Latino;184
+98;29;F;Hispanic/Latino;160
+99;25;M;Hispanic/Latino;166
+100;17;F;Hispanic/Latino;149
+101;32;M;Hispanic/Latino;168
+102;29;M;Hispanic/Latino;155
+103;18;M;Caucasian;176
+104;15;F;Asian;172
+105;20;M;African-American;191
+106;15;F;Indian;178
+107;31;F;Indian;178
+108;15;M;Caucasian;179
+109;43;M;Pacific Islander;178
+110;17;M;Pacific Islander;159
+111;43;M;Caucasian;194
+112;32;M;Asian;152
+113;24;M;African-American;150
+114;25;F;Indian;178
+115;17;M;Indian;189
+116;18;F;Caucasian;164
+117;31;M;Pacific Islander;193
+118;41;M;Pacific Islander;162
+119;26;M;Caucasian;185
+120;20;F;Asian;177
+121;41;F;African-American;150
+122;28;F;Indian;171
+123;27;F;Indian;195
+124;20;M;Caucasian;172
+125;33;M;Pacific Islander;155
+126;40;F;Pacific Islander;168
+127;18;M;Caucasian;171
+128;20;F;Asian;155
+129;19;F;African-American;189
+130;36;M;Indian;190
+131;21;M;Indian;190
+132;19;M;Caucasian;150
+133;15;M;Pacific Islander;180
+134;41;M;Pacific Islander;161
+135;30;F;Caucasian;175
+136;23;F;Asian;172
+137;21;M;African-American;182
+138;25;M;Indian;156
+139;29;M;Indian;151
+140;17;M;Caucasian;191
+141;34;F;Pacific Islander;200
+142;41;M;Pacific Islander;186
+143;22;F;Hispanic/Latino;186
+144;36;M;Hispanic/Latino;158
+145;32;F;Hispanic/Latino;177
+146;25;M;Hispanic/Latino;198
+147;43;M;Hispanic/Latino;192
+148;15;M;Hispanic/Latino;163
+149;32;M;Hispanic/Latino;165
+150;26;M;Hispanic/Latino;152

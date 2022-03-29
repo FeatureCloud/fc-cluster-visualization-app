@@ -92,13 +92,13 @@ id;age;sex;race;height
 91;18;M;Pacific Islander;184
 92;38;M;Hispanic/Latino;152
 93;34;M;Hispanic/Latino;200
-94;28;F;Hispanic/Latino;149
+94;28;F;Hispanic/Latino;150
 95;30;M;Hispanic/Latino;175
 96;16;F;Hispanic/Latino;151
 97;21;F;Hispanic/Latino;184
 98;29;F;Hispanic/Latino;160
 99;25;M;Hispanic/Latino;166
-100;17;F;Hispanic/Latino;149
+100;17;F;Hispanic/Latino;150
 101;32;M;Hispanic/Latino;168
 102;29;M;Hispanic/Latino;155
 103;18;M;Caucasian;176
@@ -147,5 +147,5 @@ id;age;sex;race;height
 146;25;M;Hispanic/Latino;198
 147;43;M;Hispanic/Latino;192
 148;15;M;Hispanic/Latino;163
-149;32;M;Hispanic/Latino;165
+150;32;M;Hispanic/Latino;165
 150;26;M;Hispanic/Latino;152

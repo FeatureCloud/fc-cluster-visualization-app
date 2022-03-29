@@ -148,7 +148,9 @@ def filter_k_confounders(value, xaxis, yaxis, checklist_values, range_values):
             marker={
                 "size": 10,
                 "color": color,
-            }
+            },
+            customdata=df,
+            hovertemplate="Sample: %{customdata[0]}",
         )
         fig.append_trace(scatter_plot, row=1, col=1)
         path = confidence_ellipse(df[xaxis],

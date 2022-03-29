@@ -3,7 +3,8 @@ import os
 
 from dash import Dash, dcc, html
 import dash_bootstrap_components as dbc
-from dash.dependencies import Input, Output, ALL
+from dash.dash_table import DataTable
+from dash.dependencies import Input, Output, ALL, State
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
@@ -17,8 +18,8 @@ app = Dash(__name__, external_stylesheets=[dbc.themes.COSMO], title='FeatureClou
 DISTANCE_DF = []
 CONFOUNDING_META = []
 DF_SCREE_PLOT = []
-K_VALUES =[]
-DATAFRAMES_BY_CLUSTER = []
+K_VALUES = []
+DATAFRAMES_BY_K_VALUE = []
 DF_SILHOUETTE = []
 DELIMITER = ';'
 DATA_DIR = "./data"
@@ -45,7 +46,7 @@ app.layout = html.Div([
 
 
 def assembleDataframes():
-    global DISTANCE_DF, CONFOUNDING_META, DATAFRAMES_BY_CLUSTER, DF_SILHOUETTE, DF_SCREE_PLOT, K_VALUES
+    global DISTANCE_DF, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, K_VALUES
     DISTANCE_DF = pd.read_csv(f'{DATA_DIR}/distanceMatrix.csv', delimiter=DELIMITER, skiprows=0, index_col=0)
     CONFOUNDING_META = pd.read_csv(f'{DATA_DIR}/confoundingData.meta', delimiter=DELIMITER, skiprows=0)
     confounding_data = pd.read_csv(f'{DATA_DIR}/confoundingData.csv', delimiter=DELIMITER, skiprows=0)
@@ -58,7 +59,7 @@ def assembleDataframes():
         cluster_data = pd.read_csv(f'{RESULT_DIR}/{dir_name}/clustering.csv', delimiter=DELIMITER, skiprows=0)
         df = pd.merge(base_df, cluster_data, on="id")
         df = pd.merge(df, confounding_data, on='id')
-        DATAFRAMES_BY_CLUSTER.append(
+        DATAFRAMES_BY_K_VALUE.append(
             {
                 'k': cluster_nr,
                 'df': df,
@@ -91,6 +92,8 @@ def render_content(tab):
 
 def render_confounders():
     data_columns = get_data_columns()
+    confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
+    datatable_columns = confounding_df.columns.to_list()
     base_content = [
         html.Div(
             [
@@ -107,7 +110,30 @@ def render_confounders():
             ]
         ),
         html.Div(get_confounding_factors_filter('confounders'), className='confounding-factors-filter-ct'),
-        dcc.Graph(id='confounders-scatter', className='confounders-scatter')
+        dcc.Graph(id='confounders-scatter', className='confounders-scatter'),
+        html.Div([
+            dbc.Button('Download', id='btn-download', color='secondary', className='me-1'),
+            html.Span(
+                '.csv',
+                style={'float': 'right', 'margin-top': '7px'}
+            ),
+            html.Span(
+                dbc.Input(id='selection-group-name', placeholder="Outlier_group"),
+                style={'float': 'right', 'margin-left': '10px'}
+            ),
+            html.Span(
+                'Filename: ',
+                style={'float': 'right', 'margin-top': '7px'}
+            ),
+            DataTable(
+                id='selection-datatable',
+                columns=[{
+                    'name': col_name.capitalize(),
+                    'id': col_name,
+                    } for col_name in datatable_columns],
+            ),
+            dcc.Download(id="download-dataframe-csv"),
+        ])
     ]
     return html.Div(base_content)
 
@@ -121,7 +147,7 @@ def render_confounders():
     Input({'type': 'filter-range-slider-confounders', 'index': ALL}, 'value'),
 )
 def filter_k_confounders(value, xaxis, yaxis, checklist_values, range_values):
-    confounding_df = get_df_by_k_value(value, DATAFRAMES_BY_CLUSTER)
+    confounding_df = get_df_by_k_value(value, DATAFRAMES_BY_K_VALUE)
     # filter base dataframe
     index_list = filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, range_values)
     confounding_df = confounding_df[confounding_df.index.isin(index_list)]
@@ -191,12 +217,14 @@ def filter_k_confounders(value, xaxis, yaxis, checklist_values, range_values):
                 fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list, showlegend=False),
                               row=i + nr_cols, col=j + 1)
     # add log transform buttons
-    fig.update_layout(updatemenus=[
+    fig.update_layout(clickmode='event+select', updatemenus=[
         dict(
             type="buttons",
             direction="right",
             x=0,
             y=1.1,
+            xanchor='left',
+            yanchor='top',
             buttons=list([
                 dict(
                     args=[{'xaxis': {'type': 'scatter'}}],
@@ -216,6 +244,43 @@ def filter_k_confounders(value, xaxis, yaxis, checklist_values, range_values):
     return fig
 
 
+@app.callback(
+    Output("selection-datatable", "data"),
+    Input('confounders-scatter', 'selectedData'),
+    Input('k-confounders', 'value'),
+)
+def display_selected(selected_data, k_value):
+    if selected_data is None:
+        return []
+    confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
+    datatable_columns = confounding_df.columns.to_list()
+    records = []
+    selected_points = selected_data['points']
+    for point in selected_points:
+        records.append(point['customdata'])
+
+    df = pd.DataFrame(data=records, columns=datatable_columns)
+    data_ob = df.to_dict('records')
+    return data_ob
+
+
+@app.callback(
+    Output('download-dataframe-csv', 'data'),
+    Input('btn-download', 'n_clicks'),
+    State("selection-datatable", "data"),
+    State("selection-datatable", "column"),
+    State('selection-group-name', 'value')
+)
+def download_selected(n_clicks, data, columns, group_name):
+    if len(data) == 0:
+        return
+    df = pd.DataFrame(data=data, columns=columns)
+    group_name = group_name.strip()
+    if len(group_name) == 0:
+        group_name = 'Outlier_Group'
+    return dcc.send_data_frame(df.to_csv, f'{group_name}.csv')
+
+
 def render_distances():
     return html.Div([
         dcc.Graph(id="distance_graph"),
@@ -232,7 +297,7 @@ def render_distances():
     Input({'type': 'filter-range-slider-distance', 'index': ALL}, 'value'),
 )
 def filter_heatmap(checklist_values, range_values):
-    confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_CLUSTER)
+    confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
     index_list = filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, range_values)
     df = DISTANCE_DF[DISTANCE_DF.index.isin(index_list)]
     data = {
@@ -536,7 +601,7 @@ def get_specs_for_matrix(rows, cols):
 
 def get_confounding_factors_filter(id_pre_tag):
     html_elem_list = []
-    confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_CLUSTER)
+    confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
     confounding_length = len(CONFOUNDING_META.index)
     for j in range(0, confounding_length):
         col = CONFOUNDING_META.iloc[j]["name"]

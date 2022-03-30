@@ -106,29 +106,34 @@ def render_confounders():
         ),
         html.Div(get_confounding_factors_filter('confounders'), className='confounding-factors-filter-ct'),
         dcc.Graph(id='confounders-scatter', className='confounders-scatter'),
-        html.Div([
-            dbc.Button('Download', id='btn-download', color='secondary', className='me-1'),
-            html.Span(
-                '.csv',
-                style={'float': 'right', 'margin-top': '7px'}
-            ),
-            html.Span(
-                dbc.Input(id='selection-group-name', placeholder="Outlier_group"),
-                style={'float': 'right', 'margin-left': '10px'}
-            ),
-            html.Span(
-                'Filename: ',
-                style={'float': 'right', 'margin-top': '7px'}
-            ),
-            DataTable(
-                id='selection-datatable',
-                columns=[{
-                    'name': col_name.capitalize(),
-                    'id': col_name,
+        dbc.Fade(
+            html.Div([
+                dbc.Button('Download', id='btn-download', color='secondary', className='me-1'),
+                html.Span(
+                    '.csv',
+                    style={'float': 'right', 'margin-top': '7px'}
+                ),
+                html.Span(
+                    dbc.Input(id='selection-group-name', placeholder="Outlier_group"),
+                    style={'float': 'right', 'margin-left': '10px'}
+                ),
+                html.Span(
+                    'Filename: ',
+                    style={'float': 'right', 'margin-top': '7px'}
+                ),
+                DataTable(
+                    id='selection-datatable',
+                    columns=[{
+                        'name': col_name.capitalize(),
+                        'id': col_name,
                     } for col_name in datatable_columns],
-            ),
-            dcc.Download(id="download-dataframe-csv"),
-        ])
+                ),
+                dcc.Download(id="download-dataframe-csv"),
+            ]),
+            id='fade-ct',
+            is_in=False,
+            appear=False
+        ),
     ]
     return html.Div(base_content)
 
@@ -241,12 +246,13 @@ def filter_k_confounders(value, xaxis, yaxis, checklist_values, range_values):
 
 @app.callback(
     Output("selection-datatable", "data"),
+    Output("fade-ct", "is_in"),
     Input('confounders-scatter', 'selectedData'),
     Input('k-confounders', 'value'),
 )
 def display_selected(selected_data, k_value):
     if selected_data is None:
-        return []
+        return [], False
     confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
     datatable_columns = confounding_df.columns.to_list()
     records = []
@@ -256,7 +262,7 @@ def display_selected(selected_data, k_value):
 
     df = pd.DataFrame(data=records, columns=datatable_columns)
     data_ob = df.to_dict('records')
-    return data_ob
+    return data_ob, True
 
 
 @app.callback(
@@ -267,7 +273,7 @@ def display_selected(selected_data, k_value):
     State('selection-group-name', 'value')
 )
 def download_selected(n_clicks, data, columns, group_name):
-    if len(data) == 0:
+    if data is None or len(data) == 0:
         return
     df = pd.DataFrame(data=data, columns=columns)
     group_name = group_name.strip()

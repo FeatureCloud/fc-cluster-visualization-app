@@ -38,7 +38,7 @@ app.layout = html.Div([
         dcc.Tab(label='Clustering Quality', value='tab-clustering-quality'),
         dcc.Tab(label='Scree plot', value='tab-scree-plot'),
     ]),
-    html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'})
+    html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'}),
 ])
 
 
@@ -275,10 +275,16 @@ def display_selected(selected_data, k_value):
 def download_selected(n_clicks, data, columns, group_name):
     if data is None or len(data) == 0:
         return
+
+    default_file_name = 'Outlier_Group'
     df = pd.DataFrame(data=data, columns=columns)
-    group_name = group_name.strip()
-    if len(group_name) == 0:
-        group_name = 'Outlier_Group'
+    if group_name is None:
+        group_name = default_file_name
+    else:
+        group_name = group_name.strip()
+        if len(group_name) == 0:
+            group_name = default_file_name
+
     return dcc.send_data_frame(df.to_csv, f'{group_name}.csv')
 
 

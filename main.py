@@ -1,3 +1,4 @@
+# confoundingMeta => level;ordinal;low,medium,high
 import os
 
 from dash import Dash, dcc, html
@@ -108,19 +109,25 @@ def render_confounders():
         dcc.Graph(id='confounders-scatter', className='confounders-scatter'),
         dbc.Fade(
             html.Div([
-                dbc.Button('Download', id='btn-download', color='secondary', className='me-1'),
-                html.Span(
-                    '.csv',
-                    style={'float': 'right', 'margin-top': '7px'}
-                ),
-                html.Span(
-                    dbc.Input(id='selection-group-name', placeholder="Outlier_group"),
-                    style={'float': 'right', 'margin-left': '10px'}
-                ),
-                html.Span(
-                    'Filename: ',
-                    style={'float': 'right', 'margin-top': '7px'}
-                ),
+                html.Div(children=[
+                    dbc.Button('Download', id='btn-download', color='secondary', className='me-1'),
+                    dcc.Checklist(
+                        ['Download inverse selection'], [], inline=True,
+                        id='download-inverse-selection', className="fc-checklist"
+                    ),
+                    html.Span(
+                        '.csv',
+                        style={'float': 'right', 'margin-top': '7px'}
+                    ),
+                    html.Span(
+                        dbc.Input(id='selection-group-name', placeholder="Outlier_group"),
+                        style={'float': 'right', 'margin-left': '10px'}
+                    ),
+                    html.Span(
+                        'Filename: ',
+                        style={'float': 'right', 'margin-top': '7px'}
+                    ),
+                ], style={'height': '40px'}),
                 DataTable(
                     id='selection-datatable',
                     columns=[{
@@ -267,17 +274,22 @@ def display_selected(selected_data, k_value):
 
 @app.callback(
     Output('download-dataframe-csv', 'data'),
+    Input('k-confounders', 'value'),
     Input('btn-download', 'n_clicks'),
+    State('download-inverse-selection', 'value'),
     State("selection-datatable", "data"),
     State("selection-datatable", "column"),
     State('selection-group-name', 'value')
 )
-def download_selected(n_clicks, data, columns, group_name):
+def download_selected(k_value, n_clicks, inverse_selection, data, columns, group_name):
     if data is None or len(data) == 0:
         return
 
     default_file_name = 'Outlier_Group'
     df = pd.DataFrame(data=data, columns=columns)
+    if inverse_selection == ['Download inverse selection']:
+        df = pd.DataFrame(data=filter_dataframe_inverse_on_id(k_value, df['id'].tolist()), columns=columns)
+
     if group_name is None:
         group_name = default_file_name
     else:
@@ -343,6 +355,15 @@ def filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, r
             confounding_df = confounding_df.loc[confounding_df[col].isin(checklist)]
             checklist_index += 1
     return confounding_df.index.tolist()
+
+
+def filter_dataframe_inverse_on_id(k_value, selected_ids):
+    print('Selected data = ')
+    print(selected_ids)
+    confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
+    selected_data = confounding_df.loc[~confounding_df['id'].isin(selected_ids)]
+    print(selected_data)
+    return selected_data
 
 
 def render_clustering_quality():
@@ -574,6 +595,10 @@ def get_df_by_k_value(k_value, base_obj):
         if k_obj['k'] == k_value:
             return k_obj['df']
     return []
+
+
+def vet_source_files(file, requirements):
+    return True
 
 
 if __name__ == '__main__':

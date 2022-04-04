@@ -23,3 +23,7 @@
 .fc-header {
     text-align: center;
 }
+
+#btn-download, #download-inverse-selection {
+    float: left;
+}

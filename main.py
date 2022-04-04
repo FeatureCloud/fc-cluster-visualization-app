@@ -358,11 +358,8 @@ def filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, r
 
 
 def filter_dataframe_inverse_on_id(k_value, selected_ids):
-    print('Selected data = ')
-    print(selected_ids)
     confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
     selected_data = confounding_df.loc[~confounding_df['id'].isin(selected_ids)]
-    print(selected_data)
     return selected_data
 
 

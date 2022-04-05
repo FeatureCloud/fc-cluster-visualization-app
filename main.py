@@ -103,17 +103,13 @@ def render_confounders():
                                 html.Span('K', style={'float': 'left', 'margin-top': '5px'}),
                                 html.Span(
                                     dcc.Dropdown(K_VALUES, K_VALUES[0], id='k-confounders', className='fc-dropdown',
-                                                 clearable=False,
-                                                 style={'float': 'left', 'margin-right': '15%'})),
+                                                 clearable=False, style={'float': 'left', 'margin-right': '15%'})),
                             ]
                         ),
                         dbc.Col(
                             html.Span(
-                                dcc.Checklist(
-                                    cluster_values_list, cluster_values_list, inline=True,
-                                    id='cluster_values_list',
-                                    className="fc-checklist"
-                                ),
+                                dcc.Checklist(cluster_values_list, cluster_values_list,
+                                              inline=True, id='cluster_values_list', className="fc-checklist"),
                             ),
                         ),
                         dbc.Col(
@@ -121,13 +117,10 @@ def render_confounders():
                             [
                                 html.Span('X axes', style={'float': 'left', 'margin-top': '5px'}),
                                 html.Span(dcc.Dropdown(data_columns, data_columns[0], id='xaxis-dropdown',
-                                                       className='fc-dropdown',
-                                                       clearable=False, style={'float': 'left'})),
+                                                       className='fc-dropdown',clearable=False, style={'float': 'left'})),
                                 html.Span('Y axes', style={'float': 'left', 'margin-top': '5px', 'margin-left': '10px'}),
                                 html.Span(dcc.Dropdown(data_columns, data_columns[1], id='yaxis-dropdown',
-                                                       className='fc-dropdown',
-                                                       clearable=False,
-                                                       style={'float': 'left'})),
+                                                       className='fc-dropdown', clearable=False, style={'float': 'left'})),
                             ]
                         ),
                     ],
@@ -185,17 +178,22 @@ def render_confounders():
 
 @app.callback(
     Output('confounders-scatter', 'figure'),
+    Output('cluster_values_list', 'options'),
+    Output('cluster_values_list', 'value'),
     Input('k-confounders', 'value'),
+    Input('cluster_values_list', 'value'),
     Input('xaxis-dropdown', 'value'),
     Input('yaxis-dropdown', 'value'),
     Input({'type': 'filter-checklist-confounders', 'index': ALL}, 'value'),
     Input({'type': 'filter-range-slider-confounders', 'index': ALL}, 'value'),
 )
-def filter_k_confounders(value, xaxis, yaxis, checklist_values, range_values):
+def filter_k_confounders(value, selected_clusters, xaxis, yaxis, checklist_values, range_values):
     confounding_df = get_df_by_k_value(value, DATAFRAMES_BY_K_VALUE)
+    cluster_checklist_values = get_cluster_values_list(confounding_df)
     # filter base dataframe
-    index_list = filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, range_values)
+    index_list = filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values)
     confounding_df = confounding_df[confounding_df.index.isin(index_list)]
+
     cluster_values_list = confounding_df.cluster.unique()
     nr_of_confounding_factors = len(CONFOUNDING_META.index)
     nr_rows = nr_of_confounding_factors + value
@@ -286,7 +284,7 @@ def filter_k_confounders(value, xaxis, yaxis, checklist_values, range_values):
             ])
         )
     ])
-    return fig
+    return fig, cluster_checklist_values, selected_clusters
 
 
 @app.callback(
@@ -377,7 +375,14 @@ def filter_heatmap(checklist_values, range_values):
     return fig
 
 
-def filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, range_values):
+def filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values):
+    selected_cluster_ids = []
+    if len(selected_clusters) > 0:
+        for cluster_value in selected_clusters:
+            cluster_id = int(cluster_value.split()[1])
+            selected_cluster_ids.append(cluster_id)
+    confounding_df = confounding_df.loc[confounding_df['cluster'].isin(selected_cluster_ids)]
+
     confounding_length = len(CONFOUNDING_META.index)
     # Filter data based on active filters
     checklist_index = range_index = 0

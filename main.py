@@ -432,6 +432,7 @@ def filter_k_label(value):
 
     fig = go.Figure()
     for i in cluster_values_list:
+        color = DEFAULT_PLOTLY_COLORS[i]
         fig.add_trace(
             go.Bar(
                 y=df[df['cluster'] == i]['y'],
@@ -441,6 +442,7 @@ def filter_k_label(value):
                     "line": {
                         "width": 0,
                     },
+                    "color": color
                 }
             )
         )

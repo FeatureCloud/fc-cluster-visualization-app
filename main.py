@@ -353,7 +353,8 @@ def render_distances():
 )
 def filter_heatmap(checklist_values, range_values):
     confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
-    index_list = filter_dataframe_on_counfounding_factors(confounding_df, checklist_values, range_values)
+    index_list = filter_dataframe_on_counfounding_factors(confounding_df, get_cluster_values_list(confounding_df),
+                                                          checklist_values, range_values)
     df = DISTANCE_DF[DISTANCE_DF.index.isin(index_list)]
     data = {
         'z': df.values.tolist(),

@@ -66,7 +66,8 @@ def assembleDataframes():
         DF_SILHOUETTE.append(
             {
                 'k': cluster_nr,
-                'df': pd.read_csv(f'{RESULT_DIR}/{dir_name}/silhouette.csv', delimiter=DELIMITER).sort_values(["cluster", "y"], ascending=(True, False)).reset_index(),
+                'df': pd.read_csv(f'{RESULT_DIR}/{dir_name}/silhouette.csv', delimiter=DELIMITER).sort_values(
+                    ["cluster", "y"], ascending=(True, False)).reset_index(),
             }
         )
 
@@ -89,58 +90,95 @@ def render_content(tab):
 def render_confounders():
     data_columns = get_data_columns()
     confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
+    cluster_values_list = get_cluster_values_list(confounding_df)
     datatable_columns = confounding_df.columns.to_list()
     base_content = [
         html.Div(
             [
-                html.Span('K', style={'float': 'left', 'width': '15%'}),
-                html.Span(
-                    dcc.Dropdown(K_VALUES, K_VALUES[0], id='k-confounders', className='fc-dropdown', clearable=False,
-                                 style={'float': 'left', 'margin-right': '15%'})),
-                html.Span('X axes', style={'float': 'left', 'margin-top': '5px'}),
-                html.Span(dcc.Dropdown(data_columns, data_columns[0], id='xaxis-dropdown', className='fc-dropdown',
-                                       clearable=False, style={'float': 'left', 'margin-right': '5%'})),
-                html.Span('Y axes', style={'float': 'left', 'margin-top': '5px'}),
-                html.Span(dcc.Dropdown(data_columns, data_columns[1], id='yaxis-dropdown', className='fc-dropdown',
-                                       clearable=False, style={'float': 'left', 'margin-right': '40%'})),
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            children=
+                            [
+                                html.Span('K', style={'float': 'left', 'margin-top': '5px'}),
+                                html.Span(
+                                    dcc.Dropdown(K_VALUES, K_VALUES[0], id='k-confounders', className='fc-dropdown',
+                                                 clearable=False,
+                                                 style={'float': 'left', 'margin-right': '15%'})),
+                            ]
+                        ),
+                        dbc.Col(
+                            html.Span(
+                                dcc.Checklist(
+                                    cluster_values_list, cluster_values_list, inline=True,
+                                    id='cluster_values_list',
+                                    className="fc-checklist"
+                                ),
+                            ),
+                        ),
+                        dbc.Col(
+                            children=
+                            [
+                                html.Span('X axes', style={'float': 'left', 'margin-top': '5px'}),
+                                html.Span(dcc.Dropdown(data_columns, data_columns[0], id='xaxis-dropdown',
+                                                       className='fc-dropdown',
+                                                       clearable=False, style={'float': 'left'})),
+                                html.Span('Y axes', style={'float': 'left', 'margin-top': '5px', 'margin-left': '10px'}),
+                                html.Span(dcc.Dropdown(data_columns, data_columns[1], id='yaxis-dropdown',
+                                                       className='fc-dropdown',
+                                                       clearable=False,
+                                                       style={'float': 'left'})),
+                            ]
+                        ),
+                    ],
+                    style={'margin-top': '20px'}
+                ),
             ]
         ),
-        html.Div(get_confounding_factors_filter('confounders'), className='confounding-factors-filter-ct'),
-        dcc.Graph(id='confounders-scatter', className='confounders-scatter'),
-        dbc.Fade(
-            html.Div([
-                html.Div(children=[
-                    dbc.Button('Download', id='btn-download', color='secondary', className='me-1'),
-                    dcc.Checklist(
-                        ['Download inverse selection'], [], inline=True,
-                        id='download-inverse-selection', className="fc-checklist"
-                    ),
-                    html.Span(
-                        '.csv',
-                        style={'float': 'right', 'margin-top': '7px'}
-                    ),
-                    html.Span(
-                        dbc.Input(id='selection-group-name', placeholder="Outlier_group"),
-                        style={'float': 'right', 'margin-left': '10px'}
-                    ),
-                    html.Span(
-                        'Filename: ',
-                        style={'float': 'right', 'margin-top': '7px'}
-                    ),
-                ], style={'height': '40px'}),
-                DataTable(
-                    id='selection-datatable',
-                    columns=[{
-                        'name': col_name.capitalize(),
-                        'id': col_name,
-                    } for col_name in datatable_columns],
-                ),
-                dcc.Download(id="download-dataframe-csv"),
-            ]),
-            id='fade-ct',
-            is_in=False,
-            appear=False
+        dbc.Row(
+            dbc.Col(
+                html.Div(get_confounding_factors_filter('confounders'), className='confounding-factors-filter-ct'),
+            )
         ),
+        dbc.Row(
+            dcc.Graph(id='confounders-scatter', className='confounders-scatter'),
+        ),
+        dbc.Row(
+            dbc.Fade(
+                html.Div([
+                    html.Div(children=[
+                        dbc.Button('Download', id='btn-download', color='secondary', className='me-1'),
+                        dcc.Checklist(
+                            ['Download inverse selection'], [], inline=True,
+                            id='download-inverse-selection', className="fc-checklist"
+                        ),
+                        html.Span(
+                            '.csv',
+                            style={'float': 'right', 'margin-top': '7px'}
+                        ),
+                        html.Span(
+                            dbc.Input(id='selection-group-name', placeholder="Outlier_group"),
+                            style={'float': 'right', 'margin-left': '10px'}
+                        ),
+                        html.Span(
+                            'Filename: ',
+                            style={'float': 'right', 'margin-top': '7px'}
+                        ),
+                    ], style={'height': '40px'}),
+                    DataTable(
+                        id='selection-datatable',
+                        columns=[{
+                            'name': col_name.capitalize(),
+                            'id': col_name,
+                        } for col_name in datatable_columns],
+                    ),
+                    dcc.Download(id="download-dataframe-csv"),
+                ]),
+                id='fade-ct',
+                is_in=False,
+                appear=False
+            ),
+        )
     ]
     return html.Div(base_content)
 
@@ -274,14 +312,14 @@ def display_selected(selected_data, k_value):
 
 @app.callback(
     Output('download-dataframe-csv', 'data'),
-    Input('k-confounders', 'value'),
     Input('btn-download', 'n_clicks'),
+    State('k-confounders', 'value'),
     State('download-inverse-selection', 'value'),
     State("selection-datatable", "data"),
     State("selection-datatable", "column"),
     State('selection-group-name', 'value')
 )
-def download_selected(k_value, n_clicks, inverse_selection, data, columns, group_name):
+def download_selected(n_clicks, k_value, inverse_selection, data, columns, group_name):
     if data is None or len(data) == 0:
         return
 
@@ -532,6 +570,11 @@ def get_confounding_factors_filter(id_pre_tag):
     html_elem_list = []
     confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
     confounding_length = len(CONFOUNDING_META.index)
+    html_elem_list.append(
+        dbc.Row(
+            html.H5("Confounding factors filter")
+        )
+    )
     for j in range(0, confounding_length):
         col = CONFOUNDING_META.iloc[j]["name"]
         data_type = CONFOUNDING_META.iloc[j]['data_type']
@@ -540,43 +583,47 @@ def get_confounding_factors_filter(id_pre_tag):
             col_min = confounding_df[col].min()
             col_max = confounding_df[col].max()
             html_elem_list.append(
-                html.Div(
-                    [
-                        html.Span(col.capitalize(), style={'float': 'left', 'width': '15%'}),
-                        html.Span(
-                            dcc.RangeSlider(
-                                col_min, col_max, value=[col_min, col_max],
-                                id={
-                                    'type': f'filter-range-slider-{id_pre_tag}',
-                                    'index': j
-                                }
+                dbc.Row(
+                    dbc.Col(
+                        children=
+                        [
+                            html.Span(col.capitalize(), style={'float': 'left', 'width': '15%'}),
+                            html.Span(
+                                dcc.RangeSlider(
+                                    col_min, col_max, value=[col_min, col_max],
+                                    id={
+                                        'type': f'filter-range-slider-{id_pre_tag}',
+                                        'index': j
+                                    }
+                                ),
+                                style={'width': '75%', 'float': 'left'}
                             ),
-                            style={'width': '75%', 'float': 'left'}
-                        ),
-                    ],
-                    style={'width': '100%', 'display': 'block'}
+                        ]
+                    )
                 )
             )
         elif data_type == 'discrete':
             # add checklist
             discrete_val_list = confounding_df[col].unique()
             html_elem_list.append(
-                html.Div(
-                    [
-                        html.Span(col.capitalize(), style={'float': 'left', 'width': '15%'}),
-                        html.Span(
-                            dcc.Checklist(
-                                discrete_val_list, discrete_val_list, inline=True,
-                                id={
-                                    'type': f'filter-checklist-{id_pre_tag}',
-                                    'index': j
-                                },
-                                className="fc-checklist"
+                dbc.Row(
+                    dbc.Col(
+                        children=
+                        [
+                            html.Span(col.capitalize(), style={'float': 'left', 'width': '15%'}),
+                            html.Span(
+                                dcc.Checklist(
+                                    discrete_val_list, discrete_val_list, inline=True,
+                                    id={
+                                        'type': f'filter-checklist-{id_pre_tag}',
+                                        'index': j
+                                    },
+                                    className="fc-checklist"
+                                ),
+                                style={'width': '75%', 'float': 'left', 'margin-left': '20px'}
                             ),
-                            style={'width': '75%', 'float': 'left', 'margin-left': '20px'}
-                        ),
-                    ],
-                    style={'width': '100%', 'display': 'block'}
+                        ]
+                    )
                 )
             )
     return html_elem_list
@@ -585,6 +632,15 @@ def get_confounding_factors_filter(id_pre_tag):
 def get_data_columns():
     # To be changed later to automatic approach
     return ['x', 'y', 'z']
+
+
+def get_cluster_values_list(df):
+    cluster_values = df.cluster.unique()
+    cluster_values_list = []
+    for i in cluster_values:
+        cluster_values_list.append(f'Cluster {i}')
+
+    return cluster_values_list
 
 
 def get_df_by_k_value(k_value, base_obj):

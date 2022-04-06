@@ -92,6 +92,7 @@ def render_confounders():
     confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
     cluster_values_list = get_cluster_values_list(confounding_df)
     datatable_columns = confounding_df.columns.to_list()
+    counfounders_filter_height = f'{32 + len(CONFOUNDING_META.index)*40}px'
     base_content = [
         html.Div(
             [
@@ -130,7 +131,11 @@ def render_confounders():
         ),
         dbc.Row(
             dbc.Col(
-                html.Div(get_confounding_factors_filter('confounders'), className='confounding-factors-filter-ct'),
+                html.Div(
+                    get_confounding_factors_filter('confounders'),
+                    className='confounding-factors-filter-ct',
+                    style={'height': counfounders_filter_height}
+                ),
             )
         ),
         dbc.Row(
@@ -409,15 +414,19 @@ def filter_dataframe_inverse_on_id(k_value, selected_ids):
 
 def render_clustering_quality():
     return html.Div([
-        html.Div(
-            [
-                html.Span('K', style={'float': 'left', 'margin-top': '6px'}),
-                html.Span(dcc.Dropdown(K_VALUES, K_VALUES[0], id='k-labels', className='fc-dropdown', clearable=False,
-                                       style={'float': 'left'}))
-            ],
-            style={'height': '60px', 'width': '100px', 'margin': '20px 70px'}
-        ),
-        dcc.Graph(id="cluster_quality_graph"),
+        dbc.Row([
+            dbc.Col(children=
+                [
+                    html.Span('K', style={'float': 'left', 'margin-top': '6px'}),
+                    html.Span(dcc.Dropdown(K_VALUES, K_VALUES[0], id='k-labels', className='fc-dropdown', clearable=False,
+                                           style={'float': 'left'}))
+                ],
+                style={'height': '60px', 'width': '100px', 'margin': '20px 70px'}
+            ),
+        ]),
+        dbc.Row([
+            dcc.Graph(id="cluster_quality_graph"),
+        ])
     ])
 
 
@@ -429,14 +438,14 @@ def filter_k_label(value):
     df = get_df_by_k_value(value, DF_SILHOUETTE)
     avg_value = "{:.2f}".format(df['y'].mean())
     cluster_values_list = df.cluster.unique()
-
     fig = go.Figure()
-    for i in cluster_values_list:
+    for i in reversed(cluster_values_list):
         color = DEFAULT_PLOTLY_COLORS[i]
         fig.add_trace(
             go.Bar(
-                y=df[df['cluster'] == i]['y'],
-                x=df[df['cluster'] == i].index,
+                x=df[df['cluster'] == i]['y'],
+                y=df[df['cluster'] == i].index,
+                orientation='h',
                 name=f'Cluster {i}',
                 marker={
                     "line": {
@@ -449,7 +458,7 @@ def filter_k_label(value):
     # Add avg line on top
     fig.add_shape(
         type="line",
-        x0=0, y0=avg_value, x1=df['x'].max(), y1=avg_value,
+        y0=0, x0=avg_value, y1=df['x'].max(), x1=avg_value,
         line=dict(
             color="Red",
             width=2,
@@ -458,11 +467,11 @@ def filter_k_label(value):
     )
     fig.update_layout(
         title=f'Clusters silhouette plot<br>Average silhouette width: {str(avg_value)}',
-        xaxis={
+        yaxis={
             "title": "",
             "showticklabels": False,
         },
-        yaxis={"title": "Silhouette width Si"},
+        xaxis={"title": "Silhouette width Si"},
         bargap=0.0,
         showlegend=True,
         legend={

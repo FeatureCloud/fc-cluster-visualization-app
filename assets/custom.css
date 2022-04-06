@@ -12,13 +12,13 @@
 }
 
 .confounding-factors-filter-ct {
-    height: 20vh;
-    margin-top: 20px;
+    margin-top: 10px;
 }
 
 .confounders-scatter {
     width: 150vh;
     height: 80vh;
+    min-width: 860px;
 }
 .fc-header {
     text-align: center;

@@ -192,7 +192,7 @@ def render_confounders():
     Input({'type': 'filter-checklist-confounders', 'index': ALL}, 'value'),
     Input({'type': 'filter-range-slider-confounders', 'index': ALL}, 'value'),
 )
-def filter_k_confounders(value, selected_clusters, xaxis, yaxis, checklist_values, range_values):
+def filter_confounders_view(value, selected_clusters, xaxis, yaxis, checklist_values, range_values):
     confounding_df = get_df_by_k_value(value, DATAFRAMES_BY_K_VALUE)
     cluster_checklist_values = get_cluster_values_list(confounding_df)
     # filter base dataframe
@@ -201,7 +201,7 @@ def filter_k_confounders(value, selected_clusters, xaxis, yaxis, checklist_value
 
     cluster_values_list = confounding_df.cluster.unique()
     nr_of_confounding_factors = len(CONFOUNDING_META.index)
-    nr_rows = nr_of_confounding_factors + value
+    nr_rows = nr_of_confounding_factors + value + 1
     nr_cols = nr_of_confounding_factors
 
     specs, subplot_titles = get_specs_for_matrix(nr_rows, nr_cols)
@@ -264,31 +264,58 @@ def filter_k_confounders(value, selected_clusters, xaxis, yaxis, checklist_value
                     pie_values_list.append(df[df[col] == discrete_val].count()[col])
                 fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list, showlegend=False),
                               row=i + nr_cols, col=j + 1)
+
+    # Add summary raw for confounding factors
+    for j in range(0, len(CONFOUNDING_META.index)):
+        col = CONFOUNDING_META.iloc[j]['name']
+        data_type = CONFOUNDING_META.iloc[j]['data_type']
+        if data_type == 'continuous':
+            # add histogram
+            bar_continuous = go.Histogram(
+                x=confounding_df[col],
+                marker={'color': color},
+                hovertemplate=col.capitalize() + ' group: %{x}<br>Count: %{y}',
+                showlegend=False,
+            )
+            fig.add_trace(bar_continuous, row=nr_rows, col=j + 1)
+        elif data_type == 'discrete':
+            # add pie chart
+            pie_values_list = []
+            discrete_val_list = confounding_df[col].unique()
+
+            for discrete_val in discrete_val_list:
+                pie_values_list.append(confounding_df[confounding_df[col] == discrete_val].count()[col])
+            fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list, showlegend=False),
+                          row=nr_rows, col=j + 1)
+
     # add log transform buttons
-    fig.update_layout(clickmode='event+select', updatemenus=[
-        dict(
-            type="buttons",
-            direction="right",
-            x=0,
-            y=1.1,
-            xanchor='left',
-            yanchor='top',
-            buttons=list([
-                dict(
-                    args=[{'xaxis': {'type': 'scatter'}}],
-                    # , 'yaxis': {'type': 'scatter'}, 'y': [df[yaxis].min(), df[yaxis].max()]}],
-                    label="Linear",
-                    method="relayout"
-                ),
-                dict(
-                    args=[{'xaxis': {'type': 'log'}}],
-                    # , 'yaxis': {'type': 'log'}, 'y': [df[yaxis].min(), df[yaxis].max()]}],
-                    label="Log",
-                    method="relayout"
-                )
-            ])
-        )
-    ])
+    fig.update_layout(
+        clickmode='event+select',
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="right",
+                x=0,
+                y=1.1,
+                xanchor='left',
+                yanchor='top',
+                buttons=list([
+                    dict(
+                        args=[{'xaxis': {'type': 'scatter'}}],
+                        # , 'yaxis': {'type': 'scatter'}, 'y': [df[yaxis].min(), df[yaxis].max()]}],
+                        label="Linear",
+                        method="relayout"
+                    ),
+                    dict(
+                        args=[{'xaxis': {'type': 'log'}}],
+                        # , 'yaxis': {'type': 'log'}, 'y': [df[yaxis].min(), df[yaxis].max()]}],
+                        label="Log",
+                        method="relayout"
+                    )
+                ])
+            )
+        ]
+    )
     return fig, cluster_checklist_values, selected_clusters
 
 
@@ -578,7 +605,12 @@ def get_specs_for_matrix(rows, cols):
             for j in range(0, len(CONFOUNDING_META.index)):
                 current_specs_row.append(
                     {'type': 'xy' if CONFOUNDING_META.iloc[j]['data_type'] == 'continuous' else 'pie'})
-                subplot_titles.append(CONFOUNDING_META.iloc[j]['name'].capitalize())
+                title=''
+                if rows != i:
+                    title = f'Cluster {i}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
+                else:
+                    title = f'All clusters: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
+                subplot_titles.append(title)
         specs.append(current_specs_row)
     return specs, subplot_titles
 

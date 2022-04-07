@@ -92,7 +92,7 @@ def render_confounders():
     confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
     cluster_values_list = get_cluster_values_list(confounding_df)
     datatable_columns = confounding_df.columns.to_list()
-    counfounders_filter_height = f'{32 + len(CONFOUNDING_META.index)*40}px'
+    confounders_filter_height = f'{32 + len(CONFOUNDING_META.index)*40}px'
     base_content = [
         html.Div(
             [
@@ -134,7 +134,7 @@ def render_confounders():
                 html.Div(
                     get_confounding_factors_filter('confounders'),
                     className='confounding-factors-filter-ct',
-                    style={'height': counfounders_filter_height}
+                    style={'height': confounders_filter_height}
                 ),
             )
         ),

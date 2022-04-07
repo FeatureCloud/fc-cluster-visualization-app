@@ -3,3 +3,4 @@ age;continuous;integer
 sex;discrete;string
 race;discrete;string
 height;continuous;integer
+blood sugar;ordinal;low,medium,high

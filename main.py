@@ -605,9 +605,9 @@ def get_specs_for_matrix(rows, cols):
             for j in range(0, len(CONFOUNDING_META.index)):
                 current_specs_row.append(
                     {'type': 'xy' if CONFOUNDING_META.iloc[j]['data_type'] == 'continuous' else 'pie'})
-                title=''
+                title = ''
                 if rows != i:
-                    title = f'Cluster {i}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
+                    title = f'Cluster {i-cols}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
                 else:
                     title = f'All clusters: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
                 subplot_titles.append(title)

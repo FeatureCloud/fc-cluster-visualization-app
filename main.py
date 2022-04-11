@@ -1,4 +1,3 @@
-# confoundingMeta => level;ordinal;low,medium,high
 import os
 
 from dash import Dash, dcc, html
@@ -246,7 +245,7 @@ def filter_confounders_view(value, selected_clusters, xaxis, yaxis, checklist_va
         for j in range(0, len(CONFOUNDING_META.index)):
             col = CONFOUNDING_META.iloc[j]['name']
             data_type = CONFOUNDING_META.iloc[j]['data_type']
-            if data_type == 'continuous':
+            if data_type == 'continuous' or data_type == 'ordinal':
                 # add histogram
                 bar_continuous = go.Histogram(
                     x=df[col],
@@ -419,7 +418,7 @@ def filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, 
             range_list = range_values[range_index]
             confounding_df = confounding_df.loc[confounding_df[col].between(range_list[0], range_list[1])]
             range_index += 1
-        elif data_type == 'discrete':
+        elif data_type == 'discrete' or data_type == 'ordinal':
             checklist = checklist_values[checklist_index]
             confounding_df = confounding_df.loc[confounding_df[col].isin(checklist)]
             checklist_index += 1
@@ -599,7 +598,7 @@ def get_specs_for_matrix(rows, cols):
                 title = ''
                 if rows != i:
                     current_specs_row.append(
-                        {'type': 'xy' if CONFOUNDING_META.iloc[j]['data_type'] == 'continuous' else 'pie'})
+                        {'type': 'pie' if CONFOUNDING_META.iloc[j]['data_type'] == 'discrete' else 'xy'})
                     title = f'Cluster {i-cols}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
                 else:
                     current_specs_row.append({'type': 'xy'})
@@ -645,7 +644,7 @@ def get_confounding_factors_filter(id_pre_tag):
                     )
                 )
             )
-        elif data_type == 'discrete':
+        elif data_type == 'discrete' or data_type == 'ordinal':
             # add checklist
             discrete_val_list = confounding_df[col].unique()
             html_elem_list.append(

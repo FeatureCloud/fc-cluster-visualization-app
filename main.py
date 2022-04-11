@@ -224,6 +224,9 @@ def filter_confounders_view(value, selected_clusters, xaxis, yaxis, checklist_va
             },
             customdata=df,
             hovertemplate="Sample: %{customdata[0]}",
+            legendgroup="0",
+            legendgrouptitle=dict(text='Clusters'),
+            showlegend=True,
         )
         fig.append_trace(scatter_plot, row=1, col=1)
         path = confidence_ellipse(df[xaxis],
@@ -261,8 +264,14 @@ def filter_confounders_view(value, selected_clusters, xaxis, yaxis, checklist_va
 
                 for discrete_val in discrete_val_list:
                     pie_values_list.append(df[df[col] == discrete_val].count()[col])
-                fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list, showlegend=False),
-                              row=i + nr_cols, col=j + 1)
+                pie_chart = go.Pie(
+                    labels=discrete_val_list,
+                    values=pie_values_list,
+                    showlegend=True,
+                    legendgroup=str(j),
+                    legendgrouptitle=dict(text=col.capitalize())
+                )
+                fig.add_trace(pie_chart, row=i + nr_cols, col=j + 1)
 
     # Add summary row for confounding factors
     for j in range(0, len(CONFOUNDING_META.index)):

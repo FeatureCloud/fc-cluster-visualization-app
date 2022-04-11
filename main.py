@@ -265,28 +265,21 @@ def filter_confounders_view(value, selected_clusters, xaxis, yaxis, checklist_va
                 fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list, showlegend=False),
                               row=i + nr_cols, col=j + 1)
 
-    # Add summary raw for confounding factors
+    # Add summary row for confounding factors
     for j in range(0, len(CONFOUNDING_META.index)):
         col = CONFOUNDING_META.iloc[j]['name']
         data_type = CONFOUNDING_META.iloc[j]['data_type']
-        if data_type == 'continuous':
+        for i in cluster_values_list:
+            df = confounding_df[confounding_df['cluster'] == i]
+            color = DEFAULT_PLOTLY_COLORS[i]
             # add histogram
             bar_continuous = go.Histogram(
-                x=confounding_df[col],
+                x=df[col],
                 marker={'color': color},
-                hovertemplate=col.capitalize() + ' group: %{x}<br>Count: %{y}',
+                hovertemplate=f'Cluster {i}<br>' + col.capitalize() + ' group: %{x}<br>Count: %{y}',
                 showlegend=False,
             )
             fig.add_trace(bar_continuous, row=nr_rows, col=j + 1)
-        elif data_type == 'discrete':
-            # add pie chart
-            pie_values_list = []
-            discrete_val_list = confounding_df[col].unique()
-
-            for discrete_val in discrete_val_list:
-                pie_values_list.append(confounding_df[confounding_df[col] == discrete_val].count()[col])
-            fig.add_trace(go.Pie(labels=discrete_val_list, values=pie_values_list, showlegend=False),
-                          row=nr_rows, col=j + 1)
 
     # add log transform buttons
     fig.update_layout(
@@ -603,12 +596,13 @@ def get_specs_for_matrix(rows, cols):
                 current_specs_row.append(None)
         else:
             for j in range(0, len(CONFOUNDING_META.index)):
-                current_specs_row.append(
-                    {'type': 'xy' if CONFOUNDING_META.iloc[j]['data_type'] == 'continuous' else 'pie'})
                 title = ''
                 if rows != i:
+                    current_specs_row.append(
+                        {'type': 'xy' if CONFOUNDING_META.iloc[j]['data_type'] == 'continuous' else 'pie'})
                     title = f'Cluster {i-cols}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
                 else:
+                    current_specs_row.append({'type': 'xy'})
                     title = f'All clusters: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
                 subplot_titles.append(title)
         specs.append(current_specs_row)

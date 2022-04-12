@@ -1,5 +1,6 @@
 import os
 
+import dash_bio
 from dash import Dash, dcc, html
 import dash_bootstrap_components as dbc
 from dash.dash_table import DataTable
@@ -389,24 +390,33 @@ def filter_heatmap(checklist_values, range_values):
     index_list = filter_dataframe_on_counfounding_factors(confounding_df, get_cluster_values_list(confounding_df),
                                                           checklist_values, range_values)
     df = DISTANCE_DF[DISTANCE_DF.index.isin(index_list)]
-    data = {
-        'z': df.values.tolist(),
-        'x': df.columns.tolist(),
-        'y': df.index.tolist()
-    }
-    layout = go.Layout(
-        title='Distance matrix',
-        xaxis={
-            "title": "",
-            "showticklabels": False,
-        },
-        yaxis={
-            "title": "",
-            "showticklabels": False,
-        },
+    # data = {
+    #     'z': df.values.tolist(),
+    #     'x': df.columns.tolist(),
+    #     'y': df.index.tolist()
+    # }
+    # layout = go.Layout(
+    #     title='Distance matrix',
+    #     xaxis={
+    #         "title": "",
+    #         "showticklabels": False,
+    #     },
+    #     yaxis={
+    #         "title": "",
+    #         "showticklabels": False,
+    #     },
+    # )
+    # fig = go.Figure(data=go.Heatmap(data), layout=layout)
+    return dash_bio.Clustergram(
+        data=df,
+        column_labels=list(df.columns.values),
+        row_labels=list(df.index),
+        height=1000,
+        width=1250,
+        # display_ratio=[0.1, 0.7],
+        hidden_labels='rows, columns'
     )
-    fig = go.Figure(data=go.Heatmap(data), layout=layout)
-    return fig
+    # return fig
 
 
 def filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values):

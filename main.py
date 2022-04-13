@@ -23,6 +23,9 @@ DF_SILHOUETTE = []
 DELIMITER = ';'
 DATA_DIR = "./data"
 RESULT_DIR = f'{DATA_DIR}/results'
+K_VALUE_CONFOUNDERS = 0
+K_VALUE_DISTANCE = 0
+HEATMAP_INDEX_LIST = []
 
 styles = {
     'pre': {
@@ -90,29 +93,16 @@ def render_content(tab):
 def render_confounders():
     data_columns = get_data_columns()
     confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
-    cluster_values_list = get_cluster_values_list(confounding_df)
     datatable_columns = confounding_df.columns.to_list()
     confounders_filter_height = f'{32 + len(CONFOUNDING_META.index)*40}px'
+    id_post_tag = 'confounders-tab'
     base_content = [
         html.Div(
             [
                 dbc.Row(
                     [
-                        dbc.Col(
-                            children=
-                            [
-                                html.Span('K', style={'float': 'left', 'margin-top': '5px'}),
-                                html.Span(
-                                    dcc.Dropdown(K_VALUES, K_VALUES[0], id='k-confounders', className='fc-dropdown',
-                                                 clearable=False, style={'float': 'left', 'margin-right': '15%'})),
-                            ]
-                        ),
-                        dbc.Col(
-                            html.Span(
-                                dcc.Checklist(cluster_values_list, cluster_values_list,
-                                              inline=True, id='cluster_values_list', className="fc-checklist"),
-                            ),
-                        ),
+                        dbc.Col(children=get_k_filter(id_post_tag)),
+                        dbc.Col(get_cluster_values_filter(id_post_tag)),
                         dbc.Col(
                             children=
                             [
@@ -183,25 +173,30 @@ def render_confounders():
 
 @app.callback(
     Output('confounders-scatter', 'figure'),
-    Output('cluster_values_list', 'options'),
-    Output('cluster_values_list', 'value'),
-    Input('k-confounders', 'value'),
-    Input('cluster_values_list', 'value'),
+    Output('cluster-values-checklist-confounders-tab', 'options'),
+    Output('cluster-values-checklist-confounders-tab', 'value'),
+    Input('k-filter-confounders-tab', 'value'),
+    Input('cluster-values-checklist-confounders-tab', 'value'),
     Input('xaxis-dropdown', 'value'),
     Input('yaxis-dropdown', 'value'),
     Input({'type': 'filter-checklist-confounders', 'index': ALL}, 'value'),
     Input({'type': 'filter-range-slider-confounders', 'index': ALL}, 'value'),
 )
-def filter_confounders_view(value, selected_clusters, xaxis, yaxis, checklist_values, range_values):
-    confounding_df = get_df_by_k_value(value, DATAFRAMES_BY_K_VALUE)
+def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_values, range_values):
+    global K_VALUE_CONFOUNDERS
+    confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
     cluster_checklist_values = get_cluster_values_list(confounding_df)
+    # Detect if K value has changed, to reset checklist values to all values selected
+    if K_VALUE_CONFOUNDERS != k_value:
+        selected_clusters = cluster_checklist_values
+    K_VALUE_CONFOUNDERS = k_value
     # filter base dataframe
     index_list = filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values)
     confounding_df = confounding_df[confounding_df.index.isin(index_list)]
 
     cluster_values_list = confounding_df.cluster.unique()
     nr_of_confounding_factors = len(CONFOUNDING_META.index)
-    nr_rows = nr_of_confounding_factors + value + 1
+    nr_rows = nr_of_confounding_factors + k_value + 1
     nr_cols = nr_of_confounding_factors
 
     specs, subplot_titles = get_specs_for_matrix(nr_rows, nr_cols)
@@ -325,7 +320,7 @@ def filter_confounders_view(value, selected_clusters, xaxis, yaxis, checklist_va
     Output("selection-datatable", "data"),
     Output("fade-ct", "is_in"),
     Input('confounders-scatter', 'selectedData'),
-    Input('k-confounders', 'value'),
+    Input('k-filter-confounders-tab', 'value'),
 )
 def display_selected(selected_data, k_value):
     if selected_data is None:
@@ -345,7 +340,7 @@ def display_selected(selected_data, k_value):
 @app.callback(
     Output('download-dataframe-csv', 'data'),
     Input('btn-download', 'n_clicks'),
-    State('k-confounders', 'value'),
+    State('k-filter-confounders-tab', 'value'),
     State('download-inverse-selection', 'value'),
     State("selection-datatable", "data"),
     State("selection-datatable", "column"),
@@ -371,52 +366,77 @@ def download_selected(n_clicks, k_value, inverse_selection, data, columns, group
 
 
 def render_distances():
-    return html.Div([
-        dcc.Graph(id="distance_graph"),
-        html.Div(
-            children=get_confounding_factors_filter('distance'),
-            style={'margin': '0 auto', 'width': '70%'}
+    id_post_tag = 'distances-tab'
+    return html.Div(
+            [
+                dbc.Row(
+                    [
+                        dbc.Col(children=get_k_filter(id_post_tag)),
+                        dbc.Col(get_cluster_values_filter(id_post_tag)),
+                    ]
+                ),
+                dbc.Row(
+                    dbc.Col(
+                        html.Div(
+                            children=get_confounding_factors_filter('distance'),
+                            style={'margin-top': '20px'}
+                        )
+                    )
+                ),
+                dbc.Row(
+                    dbc.Col(dcc.Graph(id="distance_graph"))
+                ),
+                dbc.Toast(
+                    [html.P("Dataframe is empty. Clustergram cannot be displayed", className="mb-0")],
+                    id="dataframe-empty-toast",
+                    header="Error",
+                    duration=4000,
+                    is_open=False,
+                    icon="danger",
+                    style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+                ),
+            ],
+            style={'margin-top': '20px'}
         )
-    ])
 
 
 @app.callback(
     Output("distance_graph", "figure"),
+    Output('cluster-values-checklist-distances-tab', 'options'),
+    Output('cluster-values-checklist-distances-tab', 'value'),
+    Output('dataframe-empty-toast', 'is_open'),
+    Input('k-filter-distances-tab', 'value'),
+    Input('cluster-values-checklist-distances-tab', 'value'),
     Input({'type': 'filter-checklist-distance', 'index': ALL}, 'value'),
     Input({'type': 'filter-range-slider-distance', 'index': ALL}, 'value'),
 )
-def filter_heatmap(checklist_values, range_values):
-    confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
-    index_list = filter_dataframe_on_counfounding_factors(confounding_df, get_cluster_values_list(confounding_df),
+def filter_heatmap(k_value, selected_clusters, checklist_values, range_values):
+    global K_VALUE_DISTANCE, HEATMAP_INDEX_LIST
+    confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
+    cluster_checklist_values = get_cluster_values_list(confounding_df)
+    # Detect if K value has changed, to reset checklist values to all values selected
+    if K_VALUE_DISTANCE != k_value:
+        selected_clusters = cluster_checklist_values
+    K_VALUE_DISTANCE = k_value
+    index_list = filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters,
                                                           checklist_values, range_values)
+    display_error_toaster = False
+    if len(index_list) == 0:
+        display_error_toaster = True
+        index_list = HEATMAP_INDEX_LIST
+    else:
+        HEATMAP_INDEX_LIST = index_list
+
     df = DISTANCE_DF[DISTANCE_DF.index.isin(index_list)]
-    # data = {
-    #     'z': df.values.tolist(),
-    #     'x': df.columns.tolist(),
-    #     'y': df.index.tolist()
-    # }
-    # layout = go.Layout(
-    #     title='Distance matrix',
-    #     xaxis={
-    #         "title": "",
-    #         "showticklabels": False,
-    #     },
-    #     yaxis={
-    #         "title": "",
-    #         "showticklabels": False,
-    #     },
-    # )
-    # fig = go.Figure(data=go.Heatmap(data), layout=layout)
     return dash_bio.Clustergram(
         data=df,
         column_labels=list(df.columns.values),
         row_labels=list(df.index),
-        height=1000,
-        width=1250,
+        height=800,
+        width=1400,
         # display_ratio=[0.1, 0.7],
         hidden_labels='rows, columns'
-    )
-    # return fig
+    ), cluster_checklist_values, selected_clusters, display_error_toaster
 
 
 def filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values):
@@ -709,6 +729,25 @@ def get_df_by_k_value(k_value, base_obj):
         if k_obj['k'] == k_value:
             return k_obj['df']
     return []
+
+
+def get_k_filter(id_post_tag):
+    return [
+
+                html.Span('K', style={'float': 'left', 'margin-top': '5px'}),
+                html.Span(
+                    dcc.Dropdown(K_VALUES, K_VALUES[0], id=f'k-filter-{id_post_tag}', className='fc-dropdown',
+                                 clearable=False, style={'float': 'left', 'margin-right': '15%'})),
+            ]
+
+
+def get_cluster_values_filter(id_post_tag):
+    confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
+    cluster_values_list = get_cluster_values_list(confounding_df)
+    return html.Span(
+        dcc.Checklist(cluster_values_list, cluster_values_list,
+                          inline=True, id=f'cluster-values-checklist-{id_post_tag}', className="fc-checklist"),
+    )
 
 
 def vet_source_files(file, requirements):

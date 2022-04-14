@@ -387,7 +387,7 @@ def render_distances():
                     dbc.Col(dcc.Graph(id="distance_graph"))
                 ),
                 dbc.Toast(
-                    [html.P("Dataframe is empty. Clustergram cannot be displayed", className="mb-0")],
+                    [html.P("Dataframe is empty. Clustergram cannot be calculated.", className="mb-0")],
                     id="dataframe-empty-toast",
                     header="Error",
                     duration=4000,

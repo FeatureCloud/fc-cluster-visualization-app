@@ -27,3 +27,8 @@
 #btn-download, #download-inverse-selection {
     float: left;
 }
+
+#view-as-diagram-switch label {
+    margin-bottom: 6px;
+    font-size: inherit;
+}

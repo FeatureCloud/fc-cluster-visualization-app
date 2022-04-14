@@ -3,6 +3,7 @@ import os
 import dash_bio
 from dash import Dash, dcc, html
 import dash_bootstrap_components as dbc
+import dash_daq as daq
 from dash.dash_table import DataTable
 from dash.dependencies import Input, Output, ALL, State
 import plotly.graph_objects as go
@@ -135,10 +136,14 @@ def render_confounders():
             dbc.Fade(
                 html.Div([
                     html.Div(children=[
-                        dbc.Button('Download', id='btn-download', color='secondary', className='me-1'),
-                        dcc.Checklist(
-                            ['Download inverse selection'], [], inline=True,
-                            id='download-inverse-selection', className="fc-checklist"
+                        html.Span(
+                            daq.BooleanSwitch(
+                                id='view-as-diagram-switch',
+                                on=False,
+                                label='View selected data in diagrams',
+                                labelPosition='right',
+                            ),
+                            style={'float': 'left'}
                         ),
                         html.Span(
                             '.csv',
@@ -152,13 +157,31 @@ def render_confounders():
                             'Filename: ',
                             style={'float': 'right', 'margin-top': '7px'}
                         ),
+                        dbc.Button('Download', id='btn-download', color='secondary', className='me-1',
+                                   style={'float': 'right', 'margin-left': '10px'}),
+                        dcc.Checklist(
+                            ['Download inverse selection'], [], inline=True,
+                            id='download-inverse-selection', className="fc-checklist",
+                            style={'float': 'right', 'margin-left': '10px'}
+                        ),
                     ], style={'height': '40px'}),
-                    DataTable(
-                        id='selection-datatable',
-                        columns=[{
-                            'name': col_name.capitalize(),
-                            'id': col_name,
-                        } for col_name in datatable_columns],
+                    dbc.Fade(
+                        DataTable(
+                            id='selection-datatable',
+                            columns=[{
+                                'name': col_name.capitalize(),
+                                'id': col_name,
+                            } for col_name in datatable_columns],
+                        ),
+                        id='fade-datatable',
+                        is_in=True,
+                        appear=True
+                    ),
+                    dbc.Fade(
+                        dcc.Graph(id='selection-graph', className='confounders-scatter'),
+                        id='fade-selection-graph',
+                        is_in=False,
+                        appear=False
                     ),
                     dcc.Download(id="download-dataframe-csv"),
                 ]),
@@ -364,6 +387,16 @@ def download_selected(n_clicks, k_value, inverse_selection, data, columns, group
 
     return dcc.send_data_frame(df.to_csv, f'{group_name}.csv')
 
+
+@app.callback(
+    Output('fade-datatable', 'is_in'),
+    Output('fade-selection-graph', 'is_in'),
+    Output('selection-graph', 'figure'),
+    Input('view-as-diagram-switch', 'on')
+)
+def switch_datatable_view(on):
+    fig = go.Figure()
+    return not on, on, fig
 
 def render_distances():
     id_post_tag = 'distances-tab'

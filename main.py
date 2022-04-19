@@ -165,7 +165,7 @@ def render_confounders():
                             style={'float': 'right', 'margin-left': '10px'}
                         ),
                     ], style={'height': '40px'}),
-                    dbc.Fade(
+                    dbc.Collapse(
                         DataTable(
                             id='selection-datatable',
                             columns=[{
@@ -173,15 +173,13 @@ def render_confounders():
                                 'id': col_name,
                             } for col_name in datatable_columns],
                         ),
-                        id='fade-datatable',
-                        is_in=True,
-                        appear=True
+                        id='collapse-datatable',
+                        is_open=True
                     ),
-                    dbc.Fade(
+                    dbc.Collapse(
                         dcc.Graph(id='selection-graph', className='confounders-scatter'),
-                        id='fade-selection-graph',
-                        is_in=False,
-                        appear=False
+                        id='collapse-selection-graph',
+                        is_open=False
                     ),
                     dcc.Download(id="download-dataframe-csv"),
                 ]),
@@ -342,6 +340,7 @@ def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_
 @app.callback(
     Output("selection-datatable", "data"),
     Output("fade-ct", "is_in"),
+    Output('selection-graph', 'figure'),
     Input('confounders-scatter', 'selectedData'),
     Input('k-filter-confounders-tab', 'value'),
 )
@@ -357,7 +356,68 @@ def display_selected(selected_data, k_value):
 
     df = pd.DataFrame(data=records, columns=datatable_columns)
     data_ob = df.to_dict('records')
-    return data_ob, True
+
+    # assemble confounding diagrams
+    cluster_values_list = confounding_df.cluster.unique()
+    nr_of_confounding_factors = len(CONFOUNDING_META.index)
+    nr_rows = k_value + 1
+    nr_cols = nr_of_confounding_factors
+
+    specs, subplot_titles = get_specs_for_selection_matrix(nr_rows, nr_cols)
+    fig = make_subplots(
+        rows=nr_rows,
+        cols=nr_cols,
+        specs=specs,
+        subplot_titles=subplot_titles
+    )
+    confounding_df = df
+    for i in cluster_values_list:
+        color = DEFAULT_PLOTLY_COLORS[i]
+        df = confounding_df[confounding_df['cluster'] == i]
+        for j in range(0, len(CONFOUNDING_META.index)):
+            col = CONFOUNDING_META.iloc[j]['name']
+            data_type = CONFOUNDING_META.iloc[j]['data_type']
+            if data_type == 'continuous' or data_type == 'ordinal':
+                # add histogram
+                bar_continuous = go.Histogram(
+                    x=df[col],
+                    marker={'color': color},
+                    hovertemplate=col.capitalize() + ' group: %{x}<br>Count: %{y}',
+                    showlegend=False,
+                )
+                fig.add_trace(bar_continuous, row=i, col=j + 1)
+            elif data_type == 'discrete':
+                # add pie chart
+                pie_values_list = []
+                discrete_val_list = confounding_df[col].unique()
+
+                for discrete_val in discrete_val_list:
+                    pie_values_list.append(df[df[col] == discrete_val].count()[col])
+                pie_chart = go.Pie(
+                    labels=discrete_val_list,
+                    values=pie_values_list,
+                    showlegend=True,
+                    legendgroup=str(j),
+                    legendgrouptitle=dict(text=col.capitalize())
+                )
+                fig.add_trace(pie_chart, row=i, col=j + 1)
+
+    # Add summary row for confounding factors
+    for j in range(0, len(CONFOUNDING_META.index)):
+        col = CONFOUNDING_META.iloc[j]['name']
+        for i in cluster_values_list:
+            df = confounding_df[confounding_df['cluster'] == i]
+            color = DEFAULT_PLOTLY_COLORS[i]
+            # add histogram
+            bar_continuous = go.Histogram(
+                x=df[col],
+                marker={'color': color},
+                hovertemplate=f'Cluster {i}<br>' + col.capitalize() + ' group: %{x}<br>Count: %{y}',
+                showlegend=False,
+            )
+            fig.add_trace(bar_continuous, row=nr_rows, col=j + 1)
+
+    return data_ob, True, fig
 
 
 @app.callback(
@@ -389,14 +449,13 @@ def download_selected(n_clicks, k_value, inverse_selection, data, columns, group
 
 
 @app.callback(
-    Output('fade-datatable', 'is_in'),
-    Output('fade-selection-graph', 'is_in'),
-    Output('selection-graph', 'figure'),
+    Output('collapse-datatable', 'is_open'),
+    Output('collapse-selection-graph', 'is_open'),
     Input('view-as-diagram-switch', 'on')
 )
 def switch_datatable_view(on):
-    fig = go.Figure()
-    return not on, on, fig
+    return not on, on
+
 
 def render_distances():
     id_post_tag = 'distances-tab'
@@ -676,6 +735,25 @@ def get_specs_for_matrix(rows, cols):
                     current_specs_row.append({'type': 'xy'})
                     title = f'All clusters: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
                 subplot_titles.append(title)
+        specs.append(current_specs_row)
+    return specs, subplot_titles
+
+
+def get_specs_for_selection_matrix(rows, cols):
+    specs = []
+    subplot_titles = []
+    for i in range(1, rows + 1):
+        current_specs_row = []
+        for j in range(0, len(CONFOUNDING_META.index)):
+            title = ''
+            if rows != i:
+                current_specs_row.append(
+                    {'type': 'pie' if CONFOUNDING_META.iloc[j]['data_type'] == 'discrete' else 'xy'})
+                title = f'Cluster {i}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
+            else:
+                current_specs_row.append({'type': 'xy'})
+                title = f'All clusters: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
+            subplot_titles.append(title)
         specs.append(current_specs_row)
     return specs, subplot_titles
 

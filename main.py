@@ -115,6 +115,17 @@ def render_confounders():
                                                        className='fc-dropdown', clearable=False, style={'float': 'left'})),
                             ]
                         ),
+                        dbc.Col(
+                            html.Span(
+                                daq.BooleanSwitch(
+                                    id='use-pie-charts-switch',
+                                    on=True,
+                                    label='Use pie chart for discrete data type',
+                                    labelPosition='right',
+                                ),
+                                style={'float': 'left'}
+                            ),
+                        ),
                     ],
                     style={'margin-top': '20px'}
                 ),
@@ -202,8 +213,9 @@ def render_confounders():
     Input('yaxis-dropdown', 'value'),
     Input({'type': 'filter-checklist-confounders', 'index': ALL}, 'value'),
     Input({'type': 'filter-range-slider-confounders', 'index': ALL}, 'value'),
+    Input('use-pie-charts-switch', 'on')
 )
-def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_values, range_values):
+def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_values, range_values, use_pie_charts):
     global K_VALUE_CONFOUNDERS
     confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
     cluster_checklist_values = get_cluster_values_list(confounding_df)
@@ -220,12 +232,12 @@ def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_
     nr_rows = nr_of_confounding_factors + k_value + 1
     nr_cols = nr_of_confounding_factors
 
-    specs, subplot_titles = get_specs_for_matrix(nr_rows, nr_cols)
+    specs, subplot_titles = get_specs_for_matrix(nr_rows, nr_cols, use_pie_charts)
     fig = make_subplots(
         rows=nr_rows,
         cols=nr_cols,
         specs=specs,
-        subplot_titles=subplot_titles
+        subplot_titles=subplot_titles,
     )
     for i in cluster_values_list:
         color = DEFAULT_PLOTLY_COLORS[i]
@@ -265,7 +277,7 @@ def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_
         for j in range(0, len(CONFOUNDING_META.index)):
             col = CONFOUNDING_META.iloc[j]['name']
             data_type = CONFOUNDING_META.iloc[j]['data_type']
-            if data_type == 'continuous' or data_type == 'ordinal':
+            if data_type == 'continuous' or data_type == 'ordinal' or not use_pie_charts:
                 # add histogram
                 bar_continuous = go.Histogram(
                     x=df[col],
@@ -274,7 +286,7 @@ def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_
                     showlegend=False,
                 )
                 fig.add_trace(bar_continuous, row=i + nr_cols, col=j + 1)
-            elif data_type == 'discrete':
+            elif data_type == 'discrete' and use_pie_charts:
                 # add pie chart
                 pie_values_list = []
                 discrete_val_list = confounding_df[col].unique()
@@ -343,10 +355,11 @@ def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_
     Output('selection-graph', 'figure'),
     Input('confounders-scatter', 'selectedData'),
     Input('k-filter-confounders-tab', 'value'),
+    State('use-pie-charts-switch', 'on'),
 )
-def display_selected(selected_data, k_value):
+def display_selected(selected_data, k_value, use_pie_charts):
     if selected_data is None:
-        return [], False
+        return [], False, go.Figure()
     confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
     datatable_columns = confounding_df.columns.to_list()
     records = []
@@ -363,7 +376,7 @@ def display_selected(selected_data, k_value):
     nr_rows = k_value + 1
     nr_cols = nr_of_confounding_factors
 
-    specs, subplot_titles = get_specs_for_selection_matrix(nr_rows, nr_cols)
+    specs, subplot_titles = get_specs_for_selection_matrix(nr_rows, use_pie_charts)
     fig = make_subplots(
         rows=nr_rows,
         cols=nr_cols,
@@ -377,7 +390,7 @@ def display_selected(selected_data, k_value):
         for j in range(0, len(CONFOUNDING_META.index)):
             col = CONFOUNDING_META.iloc[j]['name']
             data_type = CONFOUNDING_META.iloc[j]['data_type']
-            if data_type == 'continuous' or data_type == 'ordinal':
+            if data_type == 'continuous' or data_type == 'ordinal' or not use_pie_charts:
                 # add histogram
                 bar_continuous = go.Histogram(
                     x=df[col],
@@ -386,7 +399,7 @@ def display_selected(selected_data, k_value):
                     showlegend=False,
                 )
                 fig.add_trace(bar_continuous, row=i, col=j + 1)
-            elif data_type == 'discrete':
+            elif data_type == 'discrete' and use_pie_charts:
                 # add pie chart
                 pie_values_list = []
                 discrete_val_list = confounding_df[col].unique()
@@ -711,7 +724,7 @@ def confidence_ellipse(x, y, n_std=1.96, size=100):
     return path
 
 
-def get_specs_for_matrix(rows, cols):
+def get_specs_for_matrix(rows, cols, use_pie_charts):
     specs = []
     subplot_titles = []
     for i in range(1, rows + 1):
@@ -729,7 +742,7 @@ def get_specs_for_matrix(rows, cols):
                 title = ''
                 if rows != i:
                     current_specs_row.append(
-                        {'type': 'pie' if CONFOUNDING_META.iloc[j]['data_type'] == 'discrete' else 'xy'})
+                        {'type': 'pie' if CONFOUNDING_META.iloc[j]['data_type'] == 'discrete' and use_pie_charts else 'xy'})
                     title = f'Cluster {i-cols}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
                 else:
                     current_specs_row.append({'type': 'xy'})
@@ -739,7 +752,7 @@ def get_specs_for_matrix(rows, cols):
     return specs, subplot_titles
 
 
-def get_specs_for_selection_matrix(rows, cols):
+def get_specs_for_selection_matrix(rows, use_pie_charts):
     specs = []
     subplot_titles = []
     for i in range(1, rows + 1):
@@ -748,7 +761,7 @@ def get_specs_for_selection_matrix(rows, cols):
             title = ''
             if rows != i:
                 current_specs_row.append(
-                    {'type': 'pie' if CONFOUNDING_META.iloc[j]['data_type'] == 'discrete' else 'xy'})
+                    {'type': 'pie' if CONFOUNDING_META.iloc[j]['data_type'] == 'discrete' and use_pie_charts else 'xy'})
                 title = f'Cluster {i}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
             else:
                 current_specs_row.append({'type': 'xy'})

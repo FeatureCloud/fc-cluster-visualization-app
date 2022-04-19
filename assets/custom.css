@@ -28,7 +28,7 @@
     float: left;
 }
 
-#view-as-diagram-switch label {
+#view-as-diagram-switch label, #use-pie-charts-switch label {
     margin-bottom: 6px;
     font-size: inherit;
 }

@@ -126,7 +126,11 @@ def create_dash(path_prefix):
         # filter base dataframe
         index_list = filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values)
         confounding_df = confounding_df[confounding_df.index.isin(index_list)]
+        fig = get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts)
+        return fig, cluster_checklist_values, selected_clusters
 
+
+    def get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts):
         cluster_values_list = confounding_df.cluster.unique()
         nr_of_confounding_factors = len(CONFOUNDING_META.index)
         nr_rows = nr_of_confounding_factors + k_value + 1
@@ -246,7 +250,7 @@ def create_dash(path_prefix):
                 )
             ]
         )
-        return fig, cluster_checklist_values, selected_clusters
+        return fig
 
     @app.callback(
         Output("selection-datatable", "data"),
@@ -268,66 +272,7 @@ def create_dash(path_prefix):
 
         df = pd.DataFrame(data=records, columns=datatable_columns)
         data_ob = df.to_dict('records')
-
-        # assemble confounding diagrams
-        cluster_values_list = confounding_df.cluster.unique()
-        nr_of_confounding_factors = len(CONFOUNDING_META.index)
-        nr_rows = k_value + 1
-        nr_cols = nr_of_confounding_factors
-
-        specs, subplot_titles = get_specs_for_selection_matrix(nr_rows, use_pie_charts)
-        fig = make_subplots(
-            rows=nr_rows,
-            cols=nr_cols,
-            specs=specs,
-            subplot_titles=subplot_titles
-        )
-        confounding_df = df
-        for i in cluster_values_list:
-            color = DEFAULT_PLOTLY_COLORS[i]
-            df = confounding_df[confounding_df['cluster'] == i]
-            for j in range(0, len(CONFOUNDING_META.index)):
-                col = CONFOUNDING_META.iloc[j]['name']
-                data_type = CONFOUNDING_META.iloc[j]['data_type']
-                if data_type == 'continuous' or data_type == 'ordinal' or not use_pie_charts:
-                    # add histogram
-                    bar_continuous = go.Histogram(
-                        x=df[col],
-                        marker={'color': color},
-                        hovertemplate=col.capitalize() + ' group: %{x}<br>Count: %{y}',
-                        showlegend=False,
-                    )
-                    fig.add_trace(bar_continuous, row=i, col=j + 1)
-                elif data_type == 'discrete' and use_pie_charts:
-                    # add pie chart
-                    pie_values_list = []
-                    discrete_val_list = confounding_df[col].unique()
-
-                    for discrete_val in discrete_val_list:
-                        pie_values_list.append(df[df[col] == discrete_val].count()[col])
-                    pie_chart = go.Pie(
-                        labels=discrete_val_list,
-                        values=pie_values_list,
-                        showlegend=True,
-                        legendgroup=str(j),
-                        legendgrouptitle=dict(text=col.capitalize())
-                    )
-                    fig.add_trace(pie_chart, row=i, col=j + 1)
-
-        # Add summary row for confounding factors
-        for j in range(0, len(CONFOUNDING_META.index)):
-            col = CONFOUNDING_META.iloc[j]['name']
-            for i in cluster_values_list:
-                df = confounding_df[confounding_df['cluster'] == i]
-                color = DEFAULT_PLOTLY_COLORS[i]
-                # add histogram
-                bar_continuous = go.Histogram(
-                    x=df[col],
-                    marker={'color': color},
-                    hovertemplate=f'Cluster {i}<br>' + col.capitalize() + ' group: %{x}<br>Count: %{y}',
-                    showlegend=False,
-                )
-                fig.add_trace(bar_continuous, row=nr_rows, col=j + 1)
+        fig = get_figure_with_subplots(df, k_value, 'x', 'y', use_pie_charts)
 
         return data_ob, True, fig
 

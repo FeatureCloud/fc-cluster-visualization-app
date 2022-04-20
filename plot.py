@@ -75,11 +75,6 @@ def assemble_dataframes():
 
 
 def create_dash(path_prefix):
-    # TODO include style locally instead of external dependency (COSMO theme temporarily removed)
-    """app = Dash(__name__,
-               external_stylesheets=[dbc.themes.COSMO],
-               requests_pathname_prefix=path_prefix,
-               title='FeatureCloud Visualization App')"""
     app = Dash(__name__,
                requests_pathname_prefix=path_prefix,
                title='FeatureCloud Visualization App')

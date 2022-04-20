@@ -258,9 +258,11 @@ def create_dash(path_prefix):
         Output('selection-graph', 'figure'),
         Input('confounders-scatter', 'selectedData'),
         Input('k-filter-confounders-tab', 'value'),
+        Input('xaxis-dropdown', 'value'),
+        Input('yaxis-dropdown', 'value'),
         State('use-pie-charts-switch', 'on'),
     )
-    def display_selected(selected_data, k_value, use_pie_charts):
+    def display_selected(selected_data, k_value, xaxis, yaxis, use_pie_charts):
         if selected_data is None:
             return [], False, go.Figure()
         confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
@@ -272,7 +274,7 @@ def create_dash(path_prefix):
 
         df = pd.DataFrame(data=records, columns=datatable_columns)
         data_ob = df.to_dict('records')
-        fig = get_figure_with_subplots(df, k_value, 'x', 'y', use_pie_charts)
+        fig = get_figure_with_subplots(df, k_value, xaxis, yaxis, use_pie_charts)
 
         return data_ob, True, fig
 

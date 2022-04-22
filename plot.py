@@ -15,6 +15,7 @@ from plotly.tools import DEFAULT_PLOTLY_COLORS
 
 DISTANCE_DF = []
 CONFOUNDING_META = []
+CONFOUNDING_META_BASE = []
 DF_SCREE_PLOT = []
 K_VALUES = []
 DATAFRAMES_BY_K_VALUE = []
@@ -25,6 +26,7 @@ RESULT_DIR = ''
 K_VALUE_CONFOUNDERS = 0
 K_VALUE_DISTANCE = 0
 HEATMAP_INDEX_LIST = []
+MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY = 5
 
 styles = {
     'pre': {
@@ -46,10 +48,20 @@ def setup(env):
 
 
 def assemble_dataframes():
-    global DISTANCE_DF, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, K_VALUES
+    global DISTANCE_DF, CONFOUNDING_META_BASE, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, K_VALUES
     DISTANCE_DF = pd.read_csv(f'{DATA_DIR}/distanceMatrix.csv', delimiter=DELIMITER, skiprows=0, index_col=0)
-    CONFOUNDING_META = pd.read_csv(f'{DATA_DIR}/confoundingData.meta', delimiter=DELIMITER, skiprows=0)
+    CONFOUNDING_META_BASE = pd.read_csv(f'{DATA_DIR}/confoundingData.meta', delimiter=DELIMITER, skiprows=0)
     confounding_data = pd.read_csv(f'{DATA_DIR}/confoundingData.csv', delimiter=DELIMITER, skiprows=0)
+    if len(CONFOUNDING_META) == 0:
+        if len(CONFOUNDING_META_BASE) > MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY:
+            CONFOUNDING_META = CONFOUNDING_META_BASE.head(MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY)
+        else:
+            CONFOUNDING_META = CONFOUNDING_META_BASE
+    confounding_data_expected_column_list = CONFOUNDING_META['name'].tolist()
+    confounding_data_expected_column_list.append('id')
+    # keep only the selected confounding factors
+    confounding_data = confounding_data[confounding_data.columns.intersection(confounding_data_expected_column_list)]
+
     DF_SCREE_PLOT = pd.read_csv(f'{DATA_DIR}/variance_explained.csv', delimiter=DELIMITER, skiprows=0)
     base_df = pd.read_csv(f'{DATA_DIR}/localData.csv', delimiter=DELIMITER, skiprows=0)
 
@@ -103,7 +115,125 @@ def create_dash(path_prefix):
         elif tab == 'tab-scree-plot':
             return render_scree_plot()
 
+    def render_confounders():
+        data_columns = get_data_columns()
+        confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
+        datatable_columns = confounding_df.columns.to_list()
+        confounders_filter_height = f'{32 + len(CONFOUNDING_META.index) * 40}px'
+        id_post_tag = 'confounders-tab'
+        base_content = [
+            html.Div(
+                [
+                    dbc.Row(
+                        [
+                            dbc.Col(children=get_k_filter(id_post_tag)),
+                            dbc.Col(get_cluster_values_filter(id_post_tag)),
+                            dbc.Col(
+                                children=
+                                [
+                                    html.Span('X axes', style={'float': 'left', 'margin-top': '5px'}),
+                                    html.Span(dcc.Dropdown(data_columns, data_columns[0], id='xaxis-dropdown',
+                                                           className='fc-dropdown', clearable=False,
+                                                           style={'float': 'left'})),
+                                    html.Span('Y axes',
+                                              style={'float': 'left', 'margin-top': '5px', 'margin-left': '10px'}),
+                                    html.Span(dcc.Dropdown(data_columns, data_columns[1], id='yaxis-dropdown',
+                                                           className='fc-dropdown', clearable=False,
+                                                           style={'float': 'left'})),
+                                    html.Span(CONFOUNDING_META.columns.tolist(), id=f'cff-confounders-hidden',
+                                              style={'display': 'none'})
+                                ]
+                            ),
+                            dbc.Col(
+                                html.Span(
+                                    daq.BooleanSwitch(
+                                        id='use-pie-charts-switch',
+                                        on=True,
+                                        label='Use pie chart for discrete data type',
+                                        labelPosition='right',
+                                    ),
+                                    style={'float': 'left'}
+                                ),
+                            ),
+                        ],
+                        style={'margin-top': '20px'}
+                    ),
+                ]
+            ),
+            dbc.Row(
+                dbc.Col(
+                    html.Div(
+                        get_confounding_factors_filter('confounders'),
+                        id='confounding-factors-filter-ct',
+                        className='confounding-factors-filter-ct',
+                        style={'height': confounders_filter_height}
+                    ),
+                )
+            ),
+            dbc.Row(
+                dcc.Graph(id='confounders-scatter', className='confounders-scatter'),
+            ),
+            dbc.Row(
+                dbc.Fade(
+                    html.Div([
+                        html.Div(children=[
+                            html.Span(
+                                daq.BooleanSwitch(
+                                    id='view-as-diagram-switch',
+                                    on=False,
+                                    label='View selected data in diagrams',
+                                    labelPosition='right',
+                                ),
+                                style={'float': 'left'}
+                            ),
+                            html.Span(
+                                '.csv',
+                                style={'float': 'right', 'margin-top': '7px'}
+                            ),
+                            html.Span(
+                                dbc.Input(id='selection-group-name', placeholder="Outlier_group"),
+                                style={'float': 'right', 'margin-left': '10px'}
+                            ),
+                            html.Span(
+                                'Filename: ',
+                                style={'float': 'right', 'margin-top': '7px'}
+                            ),
+                            dbc.Button('Download', id='btn-download', color='secondary', className='me-1',
+                                       style={'float': 'right', 'margin-left': '10px'}),
+                            dcc.Checklist(
+                                ['Download inverse selection'], [], inline=True,
+                                id='download-inverse-selection', className="fc-checklist",
+                                style={'float': 'right', 'margin-left': '10px'}
+                            ),
+                        ], style={'height': '40px'}),
+                        dbc.Collapse(
+                            DataTable(
+                                id='selection-datatable',
+                                columns=[{
+                                    'name': col_name.capitalize(),
+                                    'id': col_name,
+                                } for col_name in datatable_columns],
+                            ),
+                            id='collapse-datatable',
+                            is_open=True
+                        ),
+                        dbc.Collapse(
+                            dcc.Graph(id='selection-graph', className='confounders-scatter'),
+                            id='collapse-selection-graph',
+                            is_open=False
+                        ),
+                        dcc.Download(id="download-dataframe-csv"),
+                    ]),
+                    id='fade-ct',
+                    is_in=False,
+                    appear=False
+                ),
+            )
+        ]
+        return html.Div(base_content)
+
     @app.callback(
+        # Output('confounding-factors-filter-ct', 'value'),
         Output('confounders-scatter', 'figure'),
         Output('cluster-values-checklist-confounders-tab', 'options'),
         Output('cluster-values-checklist-confounders-tab', 'value'),
@@ -113,9 +243,12 @@ def create_dash(path_prefix):
         Input('yaxis-dropdown', 'value'),
         Input({'type': 'filter-checklist-confounders', 'index': ALL}, 'value'),
         Input({'type': 'filter-range-slider-confounders', 'index': ALL}, 'value'),
-        Input('use-pie-charts-switch', 'on')
+        Input('use-pie-charts-switch', 'on'),
+        Input('cff-confounders-hidden', 'value'),
+        # State('confounding-factors-filter-ct', 'value'),
     )
-    def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_values, range_values, use_pie_charts):
+    def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_values, range_values,
+                                use_pie_charts, hidden_input_triggered):
         global K_VALUE_CONFOUNDERS
         confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
         cluster_checklist_values = get_cluster_values_list(confounding_df)
@@ -124,11 +257,11 @@ def create_dash(path_prefix):
             selected_clusters = cluster_checklist_values
         K_VALUE_CONFOUNDERS = k_value
         # filter base dataframe
-        index_list = filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values)
+        index_list = filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values,
+                                                              range_values)
         confounding_df = confounding_df[confounding_df.index.isin(index_list)]
         fig = get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts)
         return fig, cluster_checklist_values, selected_clusters
-
 
     def get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts):
         cluster_values_list = confounding_df.cluster.unique()
@@ -401,154 +534,77 @@ def create_dash(path_prefix):
         )
         return fig
 
+    @app.callback(
+        Output('confounding-modal', 'is_open'),
+        Input('btn-open-confounding-modal', 'n_clicks'),
+        Input('btn-set-confounding-factors', 'n_clicks'),
+        State('confounding-modal', 'is_open')
+    )
+    def toggle_modal(n_open, n_close, is_open):
+        if n_open or n_close:
+            return not is_open
+        return is_open
+
+    @app.callback(
+        Output('select-confounding-factors-error', 'is_open'),
+        Input('confounding-factors-selector-checklist', 'value'),
+    )
+    def setConfoundingFactors(selected_confounding_factors):
+        global CONFOUNDING_META, CONFOUNDING_META_BASE
+        nr_selected_confounding_factors = len(selected_confounding_factors)
+        if nr_selected_confounding_factors > MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY or nr_selected_confounding_factors < 1:
+            return True
+        else:
+            column_list = []
+            for cf in selected_confounding_factors:
+                column_list.append(cf.lower())
+            CONFOUNDING_META = CONFOUNDING_META_BASE.loc[CONFOUNDING_META_BASE['name'].isin(column_list)]
+        return False
+
+    @app.callback(
+        Output('cff-confounders-hidden', 'value'),
+        Input('btn-set-confounding-factors', 'n_clicks'),
+    )
+    def trigger_reload_based_on_confounding_factors_change(n_clicks):
+        assemble_dataframes()
+        return CONFOUNDING_META.columns.tolist()
+
     return app
-
-
-def render_confounders():
-    data_columns = get_data_columns()
-    confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
-    datatable_columns = confounding_df.columns.to_list()
-    confounders_filter_height = f'{32 + len(CONFOUNDING_META.index)*40}px'
-    id_post_tag = 'confounders-tab'
-    base_content = [
-        html.Div(
-            [
-                dbc.Row(
-                    [
-                        dbc.Col(children=get_k_filter(id_post_tag)),
-                        dbc.Col(get_cluster_values_filter(id_post_tag)),
-                        dbc.Col(
-                            children=
-                            [
-                                html.Span('X axes', style={'float': 'left', 'margin-top': '5px'}),
-                                html.Span(dcc.Dropdown(data_columns, data_columns[0], id='xaxis-dropdown',
-                                                       className='fc-dropdown',clearable=False, style={'float': 'left'})),
-                                html.Span('Y axes', style={'float': 'left', 'margin-top': '5px', 'margin-left': '10px'}),
-                                html.Span(dcc.Dropdown(data_columns, data_columns[1], id='yaxis-dropdown',
-                                                       className='fc-dropdown', clearable=False, style={'float': 'left'})),
-                            ]
-                        ),
-                        dbc.Col(
-                            html.Span(
-                                daq.BooleanSwitch(
-                                    id='use-pie-charts-switch',
-                                    on=True,
-                                    label='Use pie chart for discrete data type',
-                                    labelPosition='right',
-                                ),
-                                style={'float': 'left'}
-                            ),
-                        ),
-                    ],
-                    style={'margin-top': '20px'}
-                ),
-            ]
-        ),
-        dbc.Row(
-            dbc.Col(
-                html.Div(
-                    get_confounding_factors_filter('confounders'),
-                    className='confounding-factors-filter-ct',
-                    style={'height': confounders_filter_height}
-                ),
-            )
-        ),
-        dbc.Row(
-            dcc.Graph(id='confounders-scatter', className='confounders-scatter'),
-        ),
-        dbc.Row(
-            dbc.Fade(
-                html.Div([
-                    html.Div(children=[
-                        html.Span(
-                            daq.BooleanSwitch(
-                                id='view-as-diagram-switch',
-                                on=False,
-                                label='View selected data in diagrams',
-                                labelPosition='right',
-                            ),
-                            style={'float': 'left'}
-                        ),
-                        html.Span(
-                            '.csv',
-                            style={'float': 'right', 'margin-top': '7px'}
-                        ),
-                        html.Span(
-                            dbc.Input(id='selection-group-name', placeholder="Outlier_group"),
-                            style={'float': 'right', 'margin-left': '10px'}
-                        ),
-                        html.Span(
-                            'Filename: ',
-                            style={'float': 'right', 'margin-top': '7px'}
-                        ),
-                        dbc.Button('Download', id='btn-download', color='secondary', className='me-1',
-                                   style={'float': 'right', 'margin-left': '10px'}),
-                        dcc.Checklist(
-                            ['Download inverse selection'], [], inline=True,
-                            id='download-inverse-selection', className="fc-checklist",
-                            style={'float': 'right', 'margin-left': '10px'}
-                        ),
-                    ], style={'height': '40px'}),
-                    dbc.Collapse(
-                        DataTable(
-                            id='selection-datatable',
-                            columns=[{
-                                'name': col_name.capitalize(),
-                                'id': col_name,
-                            } for col_name in datatable_columns],
-                        ),
-                        id='collapse-datatable',
-                        is_open=True
-                    ),
-                    dbc.Collapse(
-                        dcc.Graph(id='selection-graph', className='confounders-scatter'),
-                        id='collapse-selection-graph',
-                        is_open=False
-                    ),
-                    dcc.Download(id="download-dataframe-csv"),
-                ]),
-                id='fade-ct',
-                is_in=False,
-                appear=False
-            ),
-        )
-    ]
-    return html.Div(base_content)
 
 
 def render_distances():
     id_post_tag = 'distances-tab'
     return html.Div(
-            [
-                dbc.Row(
-                    [
-                        dbc.Col(children=get_k_filter(id_post_tag)),
-                        dbc.Col(get_cluster_values_filter(id_post_tag)),
-                    ]
-                ),
-                dbc.Row(
-                    dbc.Col(
-                        html.Div(
-                            children=get_confounding_factors_filter('distance'),
-                            style={'margin-top': '20px'}
-                        )
+        [
+            dbc.Row(
+                [
+                    dbc.Col(children=get_k_filter(id_post_tag)),
+                    dbc.Col(get_cluster_values_filter(id_post_tag)),
+                ]
+            ),
+            dbc.Row(
+                dbc.Col(
+                    html.Div(
+                        children=get_confounding_factors_filter('distance'),
+                        style={'margin-top': '20px'}
                     )
-                ),
-                dbc.Row(
-                    dbc.Col(dcc.Graph(id="distance_graph"))
-                ),
-                dbc.Toast(
-                    [html.P("Dataframe is empty. Clustergram cannot be calculated.", className="mb-0")],
-                    id="dataframe-empty-toast",
-                    header="Error",
-                    duration=4000,
-                    is_open=False,
-                    icon="danger",
-                    style={"position": "fixed", "top": 66, "right": 10, "width": 350},
-                ),
-            ],
-            style={'margin-top': '20px'}
-        )
+                )
+            ),
+            dbc.Row(
+                dbc.Col(dcc.Graph(id="distance_graph"))
+            ),
+            dbc.Toast(
+                [html.P("Dataframe is empty. Clustergram cannot be calculated.", className="mb-0")],
+                id="dataframe-empty-toast",
+                header="Error",
+                duration=4000,
+                is_open=False,
+                icon="danger",
+                style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+            ),
+        ],
+        style={'margin-top': '20px'}
+    )
 
 
 def filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values):
@@ -586,11 +642,11 @@ def render_clustering_quality():
     return html.Div([
         dbc.Row([
             dbc.Col(children=
-                [
-                    html.Span('K', style={'float': 'left', 'margin-top': '6px'}),
-                    html.Span(dcc.Dropdown(K_VALUES, K_VALUES[0], id='k-labels', className='fc-dropdown', clearable=False,
-                                           style={'float': 'left'}))
-                ],
+            [
+                html.Span('K', style={'float': 'left', 'margin-top': '6px'}),
+                html.Span(dcc.Dropdown(K_VALUES, K_VALUES[0], id='k-labels', className='fc-dropdown', clearable=False,
+                                       style={'float': 'left'}))
+            ],
                 style={'height': '60px', 'width': '100px', 'margin': '20px 70px'}
             ),
         ]),
@@ -698,8 +754,9 @@ def get_specs_for_matrix(rows, cols, use_pie_charts):
                 title = ''
                 if rows != i:
                     current_specs_row.append(
-                        {'type': 'pie' if CONFOUNDING_META.iloc[j]['data_type'] == 'discrete' and use_pie_charts else 'xy'})
-                    title = f'Cluster {i-cols}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
+                        {'type': 'pie' if CONFOUNDING_META.iloc[j][
+                                              'data_type'] == 'discrete' and use_pie_charts else 'xy'})
+                    title = f'Cluster {i - cols}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
                 else:
                     current_specs_row.append({'type': 'xy'})
                     title = f'All clusters: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
@@ -708,32 +765,61 @@ def get_specs_for_matrix(rows, cols, use_pie_charts):
     return specs, subplot_titles
 
 
-def get_specs_for_selection_matrix(rows, use_pie_charts):
-    specs = []
-    subplot_titles = []
-    for i in range(1, rows + 1):
-        current_specs_row = []
-        for j in range(0, len(CONFOUNDING_META.index)):
-            title = ''
-            if rows != i:
-                current_specs_row.append(
-                    {'type': 'pie' if CONFOUNDING_META.iloc[j]['data_type'] == 'discrete' and use_pie_charts else 'xy'})
-                title = f'Cluster {i}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
-            else:
-                current_specs_row.append({'type': 'xy'})
-                title = f'All clusters: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
-            subplot_titles.append(title)
-        specs.append(current_specs_row)
-    return specs, subplot_titles
-
-
 def get_confounding_factors_filter(id_pre_tag):
     html_elem_list = []
     confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
     confounding_length = len(CONFOUNDING_META.index)
+    confounding_base_length = len(CONFOUNDING_META_BASE)
+    confounding_selector_options = []
+    for j in range(0, confounding_base_length):
+        confounding_selector_options.append(CONFOUNDING_META_BASE.iloc[j]['name'].capitalize())
+
+    select_button_style = {'float': 'right'}
+    if confounding_base_length <= MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY:
+        select_button_style['display'] = 'none'
+        last_element_to_check = confounding_base_length
+    else:
+        last_element_to_check = MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY
+
     html_elem_list.append(
         dbc.Row(
-            html.H5("Confounding factors filter")
+            children=
+            [
+                dbc.Col(html.H5("Confounding factors filter")),
+                dbc.Col(
+                    dbc.Button('Select confounding factors', id='btn-open-confounding-modal', n_clicks=0,
+                               color='primary', className='me-1', style=select_button_style),
+                ),
+                dbc.Modal(
+                    [
+                        dbc.ModalHeader(dbc.ModalTitle("Select confounding factors")),
+                        dbc.ModalBody(
+                            children=[
+                                html.P(f'A maximum of {MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY} confounding factors can be selected'),
+                                dcc.Checklist(
+                                    confounding_selector_options, confounding_selector_options[0:last_element_to_check],
+                                    id='confounding-factors-selector-checklist', className='fc-checklist')
+                            ]
+                        ),
+                        dbc.ModalFooter(
+                            dbc.Button(
+                                "Set", id="btn-set-confounding-factors", className="ms-auto", n_clicks=0
+                            )
+                        ),
+                    ],
+                    id="confounding-modal",
+                    is_open=False,
+                ),
+                dbc.Toast(
+                    [html.P(f'Please select a maximum of {MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY} confounding factors to continue', className="mb-0")],
+                    id="select-confounding-factors-error",
+                    header="Error",
+                    duration=4000,
+                    is_open=False,
+                    icon="danger",
+                    style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+                ),
+            ]
         )
     )
     for j in range(0, confounding_length):
@@ -814,11 +900,11 @@ def get_df_by_k_value(k_value, base_obj):
 def get_k_filter(id_post_tag):
     return [
 
-                html.Span('K', style={'float': 'left', 'margin-top': '5px'}),
-                html.Span(
-                    dcc.Dropdown(K_VALUES, K_VALUES[0], id=f'k-filter-{id_post_tag}', className='fc-dropdown',
-                                 clearable=False, style={'float': 'left', 'margin-right': '15%'})),
-            ]
+        html.Span('K', style={'float': 'left', 'margin-top': '5px'}),
+        html.Span(
+            dcc.Dropdown(K_VALUES, K_VALUES[0], id=f'k-filter-{id_post_tag}', className='fc-dropdown',
+                         clearable=False, style={'float': 'left', 'margin-right': '15%'})),
+    ]
 
 
 def get_cluster_values_filter(id_post_tag):

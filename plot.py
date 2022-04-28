@@ -40,7 +40,7 @@ def setup(env):
     global DATA_DIR, RESULT_DIR
 
     if env == 'fc':
-        DATA_DIR = './app/data'
+        DATA_DIR = '/mnt/input'
     else:
         DATA_DIR = "./data"
 

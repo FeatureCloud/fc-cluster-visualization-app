@@ -49,6 +49,7 @@ def setup(env):
 
 def assemble_dataframes():
     global DISTANCE_DF, CONFOUNDING_META_BASE, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, K_VALUES
+    DATAFRAMES_BY_K_VALUE = []
     DISTANCE_DF = pd.read_csv(f'{DATA_DIR}/distanceMatrix.csv', delimiter=DELIMITER, skiprows=0, index_col=0)
     CONFOUNDING_META_BASE = pd.read_csv(f'{DATA_DIR}/confoundingData.meta', delimiter=DELIMITER, skiprows=0)
     confounding_data = pd.read_csv(f'{DATA_DIR}/confoundingData.csv', delimiter=DELIMITER, skiprows=0)
@@ -124,6 +125,7 @@ def create_dash(path_prefix):
         base_content = [
             html.Div(
                 [
+                    # dcc.Store(id='confounding-meta-store'),
                     dbc.Row(
                         [
                             dbc.Col(children=get_k_filter(id_post_tag)),
@@ -140,8 +142,6 @@ def create_dash(path_prefix):
                                     html.Span(dcc.Dropdown(data_columns, data_columns[1], id='yaxis-dropdown',
                                                            className='fc-dropdown', clearable=False,
                                                            style={'float': 'left'})),
-                                    html.Span(CONFOUNDING_META.columns.tolist(), id=f'cff-confounders-hidden',
-                                              style={'display': 'none'})
                                 ]
                             ),
                             dbc.Col(
@@ -233,7 +233,6 @@ def create_dash(path_prefix):
         return html.Div(base_content)
 
     @app.callback(
-        # Output('confounding-factors-filter-ct', 'value'),
         Output('confounders-scatter', 'figure'),
         Output('cluster-values-checklist-confounders-tab', 'options'),
         Output('cluster-values-checklist-confounders-tab', 'value'),
@@ -244,11 +243,9 @@ def create_dash(path_prefix):
         Input({'type': 'filter-checklist-confounders', 'index': ALL}, 'value'),
         Input({'type': 'filter-range-slider-confounders', 'index': ALL}, 'value'),
         Input('use-pie-charts-switch', 'on'),
-        Input('cff-confounders-hidden', 'value'),
-        # State('confounding-factors-filter-ct', 'value'),
     )
     def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_values, range_values,
-                                use_pie_charts, hidden_input_triggered):
+                                use_pie_charts):
         global K_VALUE_CONFOUNDERS
         confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
         cluster_checklist_values = get_cluster_values_list(confounding_df)
@@ -545,29 +542,22 @@ def create_dash(path_prefix):
             return not is_open
         return is_open
 
-    @app.callback(
-        Output('select-confounding-factors-error', 'is_open'),
-        Input('confounding-factors-selector-checklist', 'value'),
-    )
-    def setConfoundingFactors(selected_confounding_factors):
-        global CONFOUNDING_META, CONFOUNDING_META_BASE
-        nr_selected_confounding_factors = len(selected_confounding_factors)
-        if nr_selected_confounding_factors > MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY or nr_selected_confounding_factors < 1:
-            return True
-        else:
-            column_list = []
-            for cf in selected_confounding_factors:
-                column_list.append(cf.lower())
-            CONFOUNDING_META = CONFOUNDING_META_BASE.loc[CONFOUNDING_META_BASE['name'].isin(column_list)]
-        return False
+    # @app.callback(
+    #     Output('select-confounding-factors-error', 'is_open'),
+    #     Input('confounding-factors-selector-checklist', 'value'),
+    # )
+    # def setConfoundingFactors(selected_confounding_factors):
+    #     global CONFOUNDING_META, CONFOUNDING_META_BASE
+    #     nr_selected_confounding_factors = len(selected_confounding_factors)
+    #     if nr_selected_confounding_factors > MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY or nr_selected_confounding_factors < 1:
+    #         return True
+    #     else:
+    #         column_list = []
+    #         for cf in selected_confounding_factors:
+    #             column_list.append(cf.lower())
+    #         CONFOUNDING_META = CONFOUNDING_META_BASE.loc[CONFOUNDING_META_BASE['name'].isin(column_list)]
+    #     return False
 
-    @app.callback(
-        Output('cff-confounders-hidden', 'value'),
-        Input('btn-set-confounding-factors', 'n_clicks'),
-    )
-    def trigger_reload_based_on_confounding_factors_change(n_clicks):
-        assemble_dataframes()
-        return CONFOUNDING_META.columns.tolist()
 
     return app
 
@@ -774,51 +764,51 @@ def get_confounding_factors_filter(id_pre_tag):
     for j in range(0, confounding_base_length):
         confounding_selector_options.append(CONFOUNDING_META_BASE.iloc[j]['name'].capitalize())
 
-    select_button_style = {'float': 'right'}
-    if confounding_base_length <= MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY:
-        select_button_style['display'] = 'none'
-        last_element_to_check = confounding_base_length
-    else:
-        last_element_to_check = MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY
+    # select_button_style = {'float': 'right'}
+    # if confounding_base_length <= MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY:
+    #     select_button_style['display'] = 'none'
+    #     last_element_to_check = confounding_length
+    # else:
+    #     last_element_to_check = MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY
 
     html_elem_list.append(
         dbc.Row(
             children=
             [
                 dbc.Col(html.H5("Confounding factors filter")),
-                dbc.Col(
-                    dbc.Button('Select confounding factors', id='btn-open-confounding-modal', n_clicks=0,
-                               color='primary', className='me-1', style=select_button_style),
-                ),
-                dbc.Modal(
-                    [
-                        dbc.ModalHeader(dbc.ModalTitle("Select confounding factors")),
-                        dbc.ModalBody(
-                            children=[
-                                html.P(f'A maximum of {MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY} confounding factors can be selected'),
-                                dcc.Checklist(
-                                    confounding_selector_options, confounding_selector_options[0:last_element_to_check],
-                                    id='confounding-factors-selector-checklist', className='fc-checklist')
-                            ]
-                        ),
-                        dbc.ModalFooter(
-                            dbc.Button(
-                                "Set", id="btn-set-confounding-factors", className="ms-auto", n_clicks=0
-                            )
-                        ),
-                    ],
-                    id="confounding-modal",
-                    is_open=False,
-                ),
-                dbc.Toast(
-                    [html.P(f'Please select a maximum of {MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY} confounding factors to continue', className="mb-0")],
-                    id="select-confounding-factors-error",
-                    header="Error",
-                    duration=4000,
-                    is_open=False,
-                    icon="danger",
-                    style={"position": "fixed", "top": 66, "right": 10, "width": 350},
-                ),
+                # dbc.Col(
+                #     dbc.Button('Select confounding factors', id='btn-open-confounding-modal', n_clicks=0,
+                #                color='primary', className='me-1', style=select_button_style),
+                # ),
+                # dbc.Modal(
+                #     [
+                #         dbc.ModalHeader(dbc.ModalTitle("Select confounding factors")),
+                #         dbc.ModalBody(
+                #             children=[
+                #                 html.P(f'A maximum of {MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY} confounding factors can be selected'),
+                #                 dcc.Checklist(
+                #                     confounding_selector_options, confounding_selector_options[0:last_element_to_check],
+                #                     id='confounding-factors-selector-checklist', className='fc-checklist')
+                #             ]
+                #         ),
+                #         dbc.ModalFooter(
+                #             dbc.Button(
+                #                 "Set", id="btn-set-confounding-factors", className="ms-auto", n_clicks=0
+                #             )
+                #         ),
+                #     ],
+                #     id="confounding-modal",
+                #     is_open=False,
+                # ),
+                # dbc.Toast(
+                #     [html.P(f'Please select a maximum of {MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY} confounding factors to continue', className="mb-0")],
+                #     id="select-confounding-factors-error",
+                #     header="Error",
+                #     duration=4000,
+                #     is_open=False,
+                #     icon="danger",
+                #     style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+                # ),
             ]
         )
     )

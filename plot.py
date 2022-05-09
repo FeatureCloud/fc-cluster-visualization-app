@@ -104,6 +104,7 @@ def create_dash(path_prefix):
             dcc.Tab(label='Distances', value='tab-distances'),
             dcc.Tab(label='Clustering Quality', value='tab-clustering-quality'),
             dcc.Tab(label='Scree plot', value='tab-scree-plot'),
+            dcc.Tab(label='Help', value='tab-help'),
         ]),
         html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'}),
     ])
@@ -121,6 +122,8 @@ def create_dash(path_prefix):
             return render_clustering_quality()
         elif tab == 'tab-scree-plot':
             return render_scree_plot()
+        elif tab == 'tab-help':
+            return render_help()
 
     def render_confounders():
         confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
@@ -680,6 +683,11 @@ def render_scree_plot():
             id='scree-plot',
             figure=fig
         )])
+
+
+def render_help():
+    f = open('README.md', 'r')
+    return dcc.Markdown(f.read())
 
 
 def confidence_ellipse(x, y, n_std=1.96, size=100):

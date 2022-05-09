@@ -1,2 +1,4 @@
-# fc-visualization-app
-This is a generic visualization app using Dash and Plotly
+# Featurecloud Cluster Visualization app
+This is a cluster visualization app implemented in Dash and Plotly.
+
+

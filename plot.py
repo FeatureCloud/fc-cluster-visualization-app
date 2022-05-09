@@ -16,6 +16,7 @@ from plotly.tools import DEFAULT_PLOTLY_COLORS
 DISTANCE_DF = []
 CONFOUNDING_META = []
 CONFOUNDING_META_BASE = []
+DATA_COLUMNS = []
 DF_SCREE_PLOT = []
 K_VALUES = []
 DATAFRAMES_BY_K_VALUE = []
@@ -48,7 +49,8 @@ def setup(env):
 
 
 def assemble_dataframes():
-    global DISTANCE_DF, CONFOUNDING_META_BASE, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, K_VALUES
+    global DISTANCE_DF, CONFOUNDING_META_BASE, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, \
+        K_VALUES, DATA_COLUMNS
     DATAFRAMES_BY_K_VALUE = []
     DISTANCE_DF = pd.read_csv(f'{DATA_DIR}/distanceMatrix.csv', delimiter=DELIMITER, skiprows=0, index_col=0)
     CONFOUNDING_META_BASE = pd.read_csv(f'{DATA_DIR}/confoundingData.meta', delimiter=DELIMITER, skiprows=0)
@@ -65,6 +67,10 @@ def assemble_dataframes():
 
     DF_SCREE_PLOT = pd.read_csv(f'{DATA_DIR}/variance_explained.csv', delimiter=DELIMITER, skiprows=0)
     base_df = pd.read_csv(f'{DATA_DIR}/localData.csv', delimiter=DELIMITER, skiprows=0)
+    DATA_COLUMNS = base_df.columns.to_list()
+    DATA_COLUMNS.remove('id')
+    if 'client_id' in DATA_COLUMNS:
+        DATA_COLUMNS.remove('client_id')
 
     for dir_name in [f.name for f in os.scandir(RESULT_DIR) if f.is_dir()]:
         cluster_nr = int(dir_name.split('_')[1])
@@ -117,7 +123,6 @@ def create_dash(path_prefix):
             return render_scree_plot()
 
     def render_confounders():
-        data_columns = get_data_columns()
         confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
         datatable_columns = confounding_df.columns.to_list()
         confounders_filter_height = f'{32 + len(CONFOUNDING_META.index) * 40}px'
@@ -134,12 +139,12 @@ def create_dash(path_prefix):
                                 children=
                                 [
                                     html.Span('X axes', style={'float': 'left', 'margin-top': '5px'}),
-                                    html.Span(dcc.Dropdown(data_columns, data_columns[0], id='xaxis-dropdown',
+                                    html.Span(dcc.Dropdown(DATA_COLUMNS, DATA_COLUMNS[0], id='xaxis-dropdown',
                                                            className='fc-dropdown', clearable=False,
                                                            style={'float': 'left'})),
                                     html.Span('Y axes',
                                               style={'float': 'left', 'margin-top': '5px', 'margin-left': '10px'}),
-                                    html.Span(dcc.Dropdown(data_columns, data_columns[1], id='yaxis-dropdown',
+                                    html.Span(dcc.Dropdown(DATA_COLUMNS, DATA_COLUMNS[1], id='yaxis-dropdown',
                                                            className='fc-dropdown', clearable=False,
                                                            style={'float': 'left'})),
                                 ]
@@ -276,17 +281,24 @@ def create_dash(path_prefix):
         for i in cluster_values_list:
             color = DEFAULT_PLOTLY_COLORS[i]
             df = confounding_df[confounding_df['cluster'] == i]
+            marker = {
+                "size": 10,
+                "color": color,
+            }
+            if 'client_id' in df:
+                marker['symbol'] = df['client_id']
+                hovertemplate = "Sample: %{customdata[0]}<br>Client id: %{customdata[1]}"
+            else:
+                hovertemplate = "Sample: %{customdata[0]}"
+
             scatter_plot = go.Scatter(
                 x=df[xaxis],
                 y=df[yaxis],
                 mode='markers',
                 name=f'Cluster {i}',
-                marker={
-                    "size": 10,
-                    "color": color,
-                },
+                marker=marker,
                 customdata=df,
-                hovertemplate="Sample: %{customdata[0]}",
+                hovertemplate=hovertemplate,
                 legendgroup="0",
                 legendgrouptitle=dict(text='Clusters'),
                 showlegend=True,
@@ -864,11 +876,6 @@ def get_confounding_factors_filter(id_pre_tag):
                 )
             )
     return html_elem_list
-
-
-def get_data_columns():
-    # To be changed later to automatic approach
-    return ['x', 'y', 'z']
 
 
 def get_cluster_values_list(df):

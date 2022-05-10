@@ -130,14 +130,33 @@ def create_dash(path_prefix):
         datatable_columns = confounding_df.columns.to_list()
         confounders_filter_height = f'{32 + len(CONFOUNDING_META.index) * 40}px'
         id_post_tag = 'confounders-tab'
+        cluster_client_switch_style = {}
+        if 'client_id' not in confounding_df:
+            cluster_client_switch_style['display'] = 'none'
         base_content = [
             html.Div(
                 [
                     # dcc.Store(id='confounding-meta-store'),
                     dbc.Row(
                         [
+                            dbc.Col(
+                                children=[
+                                    html.Label('Client', id='client-label'),
+                                    html.Span(
+                                        daq.BooleanSwitch(
+                                            id='cluster-client-switch',
+                                            on=True,
+                                            label='Cluster',
+                                            labelPosition='right',
+                                        ),
+                                        style={'float': 'left'}
+                                    ),
+                                ],
+                                style=cluster_client_switch_style
+                            ),
                             dbc.Col(children=get_k_filter(id_post_tag)),
                             dbc.Col(get_cluster_values_filter(id_post_tag)),
+                            # dbc.Col(get_client_values_filter(id_post_tag)),
                             dbc.Col(
                                 children=
                                 [
@@ -251,10 +270,15 @@ def create_dash(path_prefix):
         Input({'type': 'filter-checklist-confounders', 'index': ALL}, 'value'),
         Input({'type': 'filter-range-slider-confounders', 'index': ALL}, 'value'),
         Input('use-pie-charts-switch', 'on'),
+        Input('cluster-client-switch', 'on'),
     )
     def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_values, range_values,
-                                use_pie_charts):
+                                use_pie_charts, use_clusters):
         global K_VALUE_CONFOUNDERS
+        if use_clusters:
+            clustering_field = 'cluster'
+        else:
+            clustering_field = 'client_id'
         confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
         cluster_checklist_values = get_cluster_values_list(confounding_df)
         # Detect if K value has changed, to reset checklist values to all values selected
@@ -263,18 +287,27 @@ def create_dash(path_prefix):
         K_VALUE_CONFOUNDERS = k_value
         # filter base dataframe
         index_list = filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values,
-                                                              range_values)
+                                                              range_values, use_clusters)
         confounding_df = confounding_df[confounding_df.index.isin(index_list)]
-        fig = get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts)
+        fig = get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts, clustering_field)
         return fig, cluster_checklist_values, selected_clusters
 
-    def get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts):
-        cluster_values_list = confounding_df.cluster.unique()
+    def get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts, clustering_field):
+        cluster_values_list = confounding_df[clustering_field].unique()
         nr_of_confounding_factors = len(CONFOUNDING_META.index)
-        nr_rows = nr_of_confounding_factors + k_value + 1
-        nr_cols = nr_of_confounding_factors
 
-        specs, subplot_titles = get_specs_for_matrix(nr_rows, nr_cols, use_pie_charts)
+        if 'client_id' in confounding_df:
+            client_id_present = True
+        else:
+            client_id_present = False
+
+        nr_cols = nr_of_confounding_factors
+        if client_id_present:
+            nr_rows = nr_of_confounding_factors + len(cluster_values_list) + 1
+        else:
+            nr_rows = nr_of_confounding_factors + k_value + 1
+
+        specs, subplot_titles = get_specs_for_matrix(nr_rows, nr_cols, use_pie_charts, clustering_field)
         fig = make_subplots(
             rows=nr_rows,
             cols=nr_cols,
@@ -283,14 +316,27 @@ def create_dash(path_prefix):
         )
         for i in cluster_values_list:
             color = DEFAULT_PLOTLY_COLORS[i]
-            df = confounding_df[confounding_df['cluster'] == i]
+            df = confounding_df[confounding_df[clustering_field] == i]
             marker = {
                 "size": 10,
                 "color": color,
             }
-            if 'client_id' in df:
-                marker['symbol'] = df['client_id']
-                hovertemplate = "Sample: %{customdata[0]}<br>Client id: %{customdata[1]}"
+
+            # construct customdata for hover info
+            customdata = []
+            for index, row in df.iterrows():
+                if client_id_present is True:
+                    customdata.append([row['id'], row['cluster'], row['client_id']])
+                else:
+                    customdata.append([row['id'], row['cluster']])
+
+            if client_id_present:
+                if clustering_field == 'cluster':
+                    marker['symbol'] = df['client_id']
+                    hovertemplate = "Sample: %{customdata[0]}<br>Client id: %{customdata[2]}"
+                else:
+                    marker['symbol'] = df['cluster']
+                    hovertemplate = "Sample: %{customdata[0]}<br>Cluster: %{customdata[1]}"
             else:
                 hovertemplate = "Sample: %{customdata[0]}"
 
@@ -298,17 +344,16 @@ def create_dash(path_prefix):
                 x=df[xaxis],
                 y=df[yaxis],
                 mode='markers',
-                name=f'Cluster {i}',
+                name=f'{clustering_field.capitalize()} {i}',
                 marker=marker,
-                customdata=df,
+                customdata=customdata,
                 hovertemplate=hovertemplate,
                 legendgroup="0",
-                legendgrouptitle=dict(text='Clusters'),
+                legendgrouptitle=dict(text=clustering_field.capitalize()),
                 showlegend=True,
             )
             fig.append_trace(scatter_plot, row=1, col=1)
-            path = confidence_ellipse(df[xaxis],
-                                      df[yaxis])
+            path = confidence_ellipse(df[xaxis], df[yaxis])
             fig.add_shape(
                 type='path',
                 path=path,
@@ -322,7 +367,7 @@ def create_dash(path_prefix):
 
         for i in cluster_values_list:
             color = DEFAULT_PLOTLY_COLORS[i]
-            df = confounding_df[confounding_df['cluster'] == i]
+            df = confounding_df[confounding_df[clustering_field] == i]
             for j in range(0, len(CONFOUNDING_META.index)):
                 col = CONFOUNDING_META.iloc[j]['name']
                 data_type = CONFOUNDING_META.iloc[j]['data_type']
@@ -356,13 +401,13 @@ def create_dash(path_prefix):
             col = CONFOUNDING_META.iloc[j]['name']
             data_type = CONFOUNDING_META.iloc[j]['data_type']
             for i in cluster_values_list:
-                df = confounding_df[confounding_df['cluster'] == i]
+                df = confounding_df[confounding_df[clustering_field] == i]
                 color = DEFAULT_PLOTLY_COLORS[i]
                 # add histogram
                 bar_continuous = go.Histogram(
                     x=df[col],
                     marker={'color': color},
-                    hovertemplate=f'Cluster {i}<br>' + col.capitalize() + ' group: %{x}<br>Count: %{y}',
+                    hovertemplate=f'{clustering_field.capitalize()} {i}<br>' + col.capitalize() + ' group: %{x}<br>Count: %{y}',
                     showlegend=False,
                 )
                 fig.add_trace(bar_continuous, row=nr_rows, col=j + 1)
@@ -477,7 +522,7 @@ def create_dash(path_prefix):
             selected_clusters = cluster_checklist_values
         K_VALUE_DISTANCE = k_value
         index_list = filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters,
-                                                              checklist_values, range_values)
+                                                              checklist_values, range_values, True)
         display_error_toaster = False
         if len(index_list) == 0:
             display_error_toaster = True
@@ -612,13 +657,14 @@ def render_distances():
     )
 
 
-def filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values):
+def filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values, use_clusters):
     selected_cluster_ids = []
     if len(selected_clusters) > 0:
         for cluster_value in selected_clusters:
             cluster_id = int(cluster_value.split()[1])
             selected_cluster_ids.append(cluster_id)
-    confounding_df = confounding_df.loc[confounding_df['cluster'].isin(selected_cluster_ids)]
+    if use_clusters:
+        confounding_df = confounding_df.loc[confounding_df['cluster'].isin(selected_cluster_ids)]
 
     confounding_length = len(CONFOUNDING_META.index)
     # Filter data based on active filters
@@ -746,7 +792,7 @@ def confidence_ellipse(x, y, n_std=1.96, size=100):
     return path
 
 
-def get_specs_for_matrix(rows, cols, use_pie_charts):
+def get_specs_for_matrix(rows, cols, use_pie_charts, clustering_field):
     specs = []
     subplot_titles = []
     for i in range(1, rows + 1):
@@ -766,7 +812,7 @@ def get_specs_for_matrix(rows, cols, use_pie_charts):
                     current_specs_row.append(
                         {'type': 'pie' if CONFOUNDING_META.iloc[j][
                                               'data_type'] == 'discrete' and use_pie_charts else 'xy'})
-                    title = f'Cluster {i - cols}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
+                    title = f'{clustering_field.capitalize()} {i - cols}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
                 else:
                     current_specs_row.append({'type': 'xy'})
                     title = f'All clusters: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
@@ -895,6 +941,15 @@ def get_cluster_values_list(df):
     return cluster_values_list
 
 
+def get_client_values_list(df):
+    client_values = df.client_id.unique()
+    client_values_list = []
+    for i in client_values:
+        client_values_list.append(f'Client {i}')
+
+    return client_values_list
+
+
 def get_df_by_k_value(k_value, base_obj):
     for k_obj in base_obj:
         if k_obj['k'] == k_value:
@@ -918,6 +973,15 @@ def get_cluster_values_filter(id_post_tag):
     return html.Span(
         dcc.Checklist(cluster_values_list, cluster_values_list,
                       inline=True, id=f'cluster-values-checklist-{id_post_tag}', className="fc-checklist"),
+    )
+
+
+def get_client_values_filter(id_post_tag):
+    confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
+    cluster_values_list = get_client_values_list(confounding_df)
+    return html.Span(
+        dcc.Checklist(cluster_values_list, cluster_values_list,
+                      inline=True, id=f'client-values-checklist-{id_post_tag}', className="fc-checklist"),
     )
 
 

@@ -28,7 +28,13 @@
     float: left;
 }
 
-#view-as-diagram-switch label, #use-pie-charts-switch label {
+#view-as-diagram-switch label, #use-pie-charts-switch label, #cluster-client-switch label {
     margin-bottom: 6px;
+    font-size: inherit;
+}
+
+#client-label {
+    margin-top: 8px;
+    float: left;
     font-size: inherit;
 }

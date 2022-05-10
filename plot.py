@@ -815,7 +815,7 @@ def get_specs_for_matrix(rows, cols, use_pie_charts, clustering_field):
                     title = f'{clustering_field.capitalize()} {i - cols}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
                 else:
                     current_specs_row.append({'type': 'xy'})
-                    title = f'All clusters: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
+                    title = f'All {clustering_field}s: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
                 subplot_titles.append(title)
         specs.append(current_specs_row)
     return specs, subplot_titles

@@ -18,6 +18,7 @@
 .confounders-scatter {
     width: 150vh;
     height: 100vh;
+    /*height: 190vh;*/
     min-width: 860px;
 }
 .fc-header {

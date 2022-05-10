@@ -77,6 +77,16 @@ def assemble_dataframes():
         K_VALUES.append(cluster_nr)
         cluster_data = pd.read_csv(f'{RESULT_DIR}/{dir_name}/clustering.csv', delimiter=DELIMITER, skiprows=0)
         df = pd.merge(base_df, cluster_data, on="id")
+
+        # put cluster column in different place to be used in hovertemplate, based on customdata parameter
+        column_list = df.columns.to_list()
+        column_list.remove('cluster')
+        if 'client_id' in column_list:
+            index = column_list.index('client_id') + 1
+        else:
+            index = column_list.index('id') + 1
+        column_list.insert(index, 'cluster')
+        df = df[column_list]
         df = pd.merge(df, confounding_data, on='id')
         DATAFRAMES_BY_K_VALUE.append(
             {
@@ -321,7 +331,7 @@ def create_dash(path_prefix):
                 "size": 10,
                 "color": color,
             }
-
+            
             # construct customdata for hover info
             customdata = []
             for index, row in df.iterrows():
@@ -333,10 +343,10 @@ def create_dash(path_prefix):
             if client_id_present:
                 if clustering_field == 'cluster':
                     marker['symbol'] = df['client_id']
-                    hovertemplate = "Sample: %{customdata[0]}<br>Client id: %{customdata[2]}"
+                    hovertemplate = "Sample: %{customdata[0]}<br>Client id: %{customdata[1]}"
                 else:
                     marker['symbol'] = df['cluster']
-                    hovertemplate = "Sample: %{customdata[0]}<br>Cluster: %{customdata[1]}"
+                    hovertemplate = "Sample: %{customdata[0]}<br>Cluster: %{customdata[2]}"
             else:
                 hovertemplate = "Sample: %{customdata[0]}"
 
@@ -346,7 +356,7 @@ def create_dash(path_prefix):
                 mode='markers',
                 name=f'{clustering_field.capitalize()} {i}',
                 marker=marker,
-                customdata=customdata,
+                customdata=df,
                 hovertemplate=hovertemplate,
                 legendgroup="0",
                 legendgrouptitle=dict(text=clustering_field.capitalize()),
@@ -464,8 +474,7 @@ def create_dash(path_prefix):
 
         df = pd.DataFrame(data=records, columns=datatable_columns)
         data_ob = df.to_dict('records')
-        fig = get_figure_with_subplots(df, k_value, xaxis, yaxis, use_pie_charts)
-
+        fig = get_figure_with_subplots(df, k_value, xaxis, yaxis, use_pie_charts, 'cluster')
         return data_ob, True, fig
 
     @app.callback(

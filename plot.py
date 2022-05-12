@@ -52,20 +52,33 @@ def assemble_dataframes():
     global DISTANCE_DF, CONFOUNDING_META_BASE, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, \
         K_VALUES, DATA_COLUMNS
     DATAFRAMES_BY_K_VALUE = []
-    DISTANCE_DF = pd.read_csv(f'{DATA_DIR}/distanceMatrix.csv', delimiter=DELIMITER, skiprows=0, index_col=0)
-    CONFOUNDING_META_BASE = pd.read_csv(f'{DATA_DIR}/confoundingData.meta', delimiter=DELIMITER, skiprows=0)
-    confounding_data = pd.read_csv(f'{DATA_DIR}/confoundingData.csv', delimiter=DELIMITER, skiprows=0)
-    if len(CONFOUNDING_META) == 0:
-        if len(CONFOUNDING_META_BASE) > MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY:
-            CONFOUNDING_META = CONFOUNDING_META_BASE.head(MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY)
-        else:
-            CONFOUNDING_META = CONFOUNDING_META_BASE
-    confounding_data_expected_column_list = CONFOUNDING_META['name'].tolist()
-    confounding_data_expected_column_list.append('id')
-    # keep only the selected confounding factors
-    confounding_data = confounding_data[confounding_data.columns.intersection(confounding_data_expected_column_list)]
+    try:
+        DISTANCE_DF = pd.read_csv(f'{DATA_DIR}/distanceMatrix.csv', delimiter=DELIMITER, skiprows=0, index_col=0)
+    except IOError:
+        print("Error: distanceMatrix.csv does not appear to exist.")
 
-    DF_SCREE_PLOT = pd.read_csv(f'{DATA_DIR}/variance_explained.csv', delimiter=DELIMITER, skiprows=0)
+    try:
+        CONFOUNDING_META_BASE = pd.read_csv(f'{DATA_DIR}/confoundingData.meta', delimiter=DELIMITER, skiprows=0)
+        confounding_data = pd.read_csv(f'{DATA_DIR}/confoundingData.csv', delimiter=DELIMITER, skiprows=0)
+        if len(CONFOUNDING_META) == 0:
+            if len(CONFOUNDING_META_BASE) > MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY:
+                CONFOUNDING_META = CONFOUNDING_META_BASE.head(MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY)
+            else:
+                CONFOUNDING_META = CONFOUNDING_META_BASE
+        confounding_data_expected_column_list = CONFOUNDING_META['name'].tolist()
+        confounding_data_expected_column_list.append('id')
+        # keep only the selected confounding factors
+        confounding_data = confounding_data[
+            confounding_data.columns.intersection(confounding_data_expected_column_list)]
+    except IOError:
+        print("Error: Confounding data is missing")
+        confounding_data = []
+
+    try:
+        DF_SCREE_PLOT = pd.read_csv(f'{DATA_DIR}/variance_explained.csv', delimiter=DELIMITER, skiprows=0)
+    except IOError:
+        print("Error: variance_explained.csv does not exist")
+
     base_df = pd.read_csv(f'{DATA_DIR}/localData.csv', delimiter=DELIMITER, skiprows=0)
     DATA_COLUMNS = base_df.columns.to_list()
     DATA_COLUMNS.remove('id')
@@ -87,7 +100,8 @@ def assemble_dataframes():
             index = column_list.index('id') + 1
         column_list.insert(index, 'cluster')
         df = df[column_list]
-        df = pd.merge(df, confounding_data, on='id')
+        if len(confounding_data) > 0:
+            df = pd.merge(df, confounding_data, on='id')
         DATAFRAMES_BY_K_VALUE.append(
             {
                 'k': cluster_nr,
@@ -106,14 +120,17 @@ def assemble_dataframes():
 def create_dash(path_prefix):
     app = Dash(__name__,
                requests_pathname_prefix=path_prefix,
-               title='FeatureCloud Visualization App')
+               title='FeatureCloud Cluster Visualization App')
+    distance_style = {'display': 'none'} if len(DISTANCE_DF) == 0 else {}
+    scree_plot_style = {'display': 'none'} if len(DF_SCREE_PLOT) == 0 else {}
+
     app.layout = html.Div([
-        html.H2('Cluster Visualization', className='fc-header'),
+        html.H2('FeatureCloud Cluster Visualization App', className='fc-header'),
         dcc.Tabs(id="tabs-ct", value='tab-confounders', children=[
             dcc.Tab(label='Confounders', value='tab-confounders'),
-            dcc.Tab(label='Distances', value='tab-distances'),
+            dcc.Tab(label='Distances', value='tab-distances', style=distance_style),
             dcc.Tab(label='Clustering Quality', value='tab-clustering-quality'),
-            dcc.Tab(label='Scree plot', value='tab-scree-plot'),
+            dcc.Tab(label='Scree plot', value='tab-scree-plot', style=scree_plot_style),
             dcc.Tab(label='Help', value='tab-help'),
         ]),
         html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'}),
@@ -138,7 +155,8 @@ def create_dash(path_prefix):
     def render_confounders():
         confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
         datatable_columns = confounding_df.columns.to_list()
-        confounders_filter_height = f'{32 + len(CONFOUNDING_META.index) * 40}px'
+        height_multiplier = 0 if len(CONFOUNDING_META) == 0 else len(CONFOUNDING_META.index)
+        confounders_filter_height = f'{32 + height_multiplier * 40}px'
         id_post_tag = 'confounders-tab'
         cluster_client_switch_style = {}
         if 'client_id' not in confounding_df:
@@ -304,18 +322,22 @@ def create_dash(path_prefix):
 
     def get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts, clustering_field):
         cluster_values_list = confounding_df[clustering_field].unique()
-        nr_of_confounding_factors = len(CONFOUNDING_META.index)
+        nr_of_confounding_factors = 0 if len(CONFOUNDING_META) == 0 else len(CONFOUNDING_META.index)
 
         if 'client_id' in confounding_df:
             client_id_present = True
         else:
             client_id_present = False
 
-        nr_cols = nr_of_confounding_factors
-        if client_id_present:
-            nr_rows = nr_of_confounding_factors + len(cluster_values_list) + 1
+        nr_cols = 1 if nr_of_confounding_factors == 0 else nr_of_confounding_factors
+        if nr_of_confounding_factors == 0:
+            nr_rows = 1
+            nr_cols = 1
         else:
-            nr_rows = nr_of_confounding_factors + k_value + 1
+            if client_id_present:
+                nr_rows = nr_of_confounding_factors + len(cluster_values_list) + 1
+            else:
+                nr_rows = nr_of_confounding_factors + k_value + 1
 
         specs, subplot_titles = get_specs_for_matrix(nr_rows, nr_cols, use_pie_charts, clustering_field)
         fig = make_subplots(
@@ -378,7 +400,7 @@ def create_dash(path_prefix):
         for i in cluster_values_list:
             color = DEFAULT_PLOTLY_COLORS[i]
             df = confounding_df[confounding_df[clustering_field] == i]
-            for j in range(0, len(CONFOUNDING_META.index)):
+            for j in range(0, nr_of_confounding_factors):
                 col = CONFOUNDING_META.iloc[j]['name']
                 data_type = CONFOUNDING_META.iloc[j]['data_type']
                 if data_type == 'continuous' or data_type == 'ordinal' or not use_pie_charts:
@@ -407,7 +429,7 @@ def create_dash(path_prefix):
                     fig.add_trace(pie_chart, row=i + nr_cols, col=j + 1)
 
         # Add summary row for confounding factors
-        for j in range(0, len(CONFOUNDING_META.index)):
+        for j in range(0, nr_of_confounding_factors):
             col = CONFOUNDING_META.iloc[j]['name']
             data_type = CONFOUNDING_META.iloc[j]['data_type']
             for i in cluster_values_list:
@@ -668,6 +690,8 @@ def render_distances():
 
 def filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values, use_clusters):
     selected_cluster_ids = []
+    if len(CONFOUNDING_META) == 0:
+        return confounding_df.index.tolist()
     if len(selected_clusters) > 0:
         for cluster_value in selected_clusters:
             cluster_id = int(cluster_value.split()[1])
@@ -804,6 +828,7 @@ def confidence_ellipse(x, y, n_std=1.96, size=100):
 def get_specs_for_matrix(rows, cols, use_pie_charts, clustering_field):
     specs = []
     subplot_titles = []
+    nr_of_confounding_factors = 0 if len(CONFOUNDING_META) == 0 else len(CONFOUNDING_META.index)
     for i in range(1, rows + 1):
         current_specs_row = []
         if i == 1:
@@ -815,7 +840,7 @@ def get_specs_for_matrix(rows, cols, use_pie_charts, clustering_field):
             for j in range(1, cols + 1):
                 current_specs_row.append(None)
         else:
-            for j in range(0, len(CONFOUNDING_META.index)):
+            for j in range(0, nr_of_confounding_factors):
                 title = ''
                 if rows != i:
                     current_specs_row.append(
@@ -832,6 +857,8 @@ def get_specs_for_matrix(rows, cols, use_pie_charts, clustering_field):
 
 def get_confounding_factors_filter(id_pre_tag):
     html_elem_list = []
+    if len(CONFOUNDING_META) == 0:
+        return html_elem_list
     confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
     confounding_length = len(CONFOUNDING_META.index)
     confounding_base_length = len(CONFOUNDING_META_BASE)

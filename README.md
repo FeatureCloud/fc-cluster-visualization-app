@@ -1,4 +1,206 @@
 # Featurecloud Cluster Visualization app
-This is a cluster visualization app implemented in Dash and Plotly.
+This is an interactive cluster visualization app implemented in Dash and Plotly.
+
+## App usage
+This app is intended to be used in [FeatureCloud](https://featurecloud.ai) environment. It requires input data in order to generate the interactive visualization interface.
+The data must be in the place and in the format specified by this documentation.
+The app has a tabular interface consisting of:
+- Confounders
+- Distances
+- Clustering Quality
+- Scree plot
+- Help
+### Confounders tab
+Main features:
+- Cluster or client id field based clustering display
+- K number selector
+- Cluster selector
+- X and Y axes selector
+- Use pie or bar chart selector for discrete data type visualization
+- Confounding factors filter
+- Scatter plot with confidence ellipsis
+- Linear or logarithmic scale 
+- Point/Lasso/Box selection
+- Export diagrams to png
+- Confounding factors diagrams
+- Visualize and download selected points
+### Distances tab
+Main features:
+- K number selector
+- Cluster selector
+- Confounding factors filter
+- Clustergram
+### Clustering Quality tab
+Main features:
+- K number selector
+- Silhouette plot
+- K number selector
+### Scree plot tab
+Main features:
+- Display components' eigenvalue
+### Help
+It displays this documentation.
+
+## Input data requirements
+### Expected folder structure for visual representation
+```
+data
+└───results
+│   └───K2
+│       │   clustering.csv
+│       │   silhouette.csv
+│   └───K3
+│       │   clustering.csv
+│       │   silhouette.csv
+│   └───...
+│   └───K<n>
+│       │   clustering.csv
+│       │   silhouette.csv
+│   confoundingData.csv
+│   confoundingData.meta    
+│   localData.csv
+│   distanceMatrix.csv
+│   varianceExplained.csv
+```
+Notes:
+- All files are mandatory. 
+- At least one K<n> folders is to be be present 
+- All files under K<n> folders are mandatory 
+### Delimiter
+The delimiter used in all files is the ";" character
+### Expected file structure
+#### confoundingData.csv
+This file contains all confounding factors related to local data.
+First column is the id (mandatory), followed by a maximum of 5 of columns of confounders. The confounders column names are arbitrary and must not match reserved column names: id, cluster, client_id
+##### Example
+```csv
+id;age;sex;race;height;sugar-level
+1;38;F;Caucasian;159;low
+2;17;F;Asian;175;low
+3;40;F;African-American;162;medium
+4;32;F;Indian;183;high
+5;18;F;Indian;193;low
+```
+#### confoundingData.meta
+This file contains meta information about confounding factors
+##### Supported data and value types:
+Columns:
+- name: the name of the confounding factor
+- data_type:
+    - continous: arbitrary values
+    - discrete: values from a predefined value set
+    - ordinal: values from a predefined value set in ordered manner
+- value_type
+    - integer
+    - string
+    - enumeration values in ordered manner
+##### Example
+```csv
+name;data_type;value_type
+age;continuous;integer
+sex;discrete;string
+race;discrete;string
+height;continuous;integer
+sugar-level;ordinal;low,medium,high
+```
+#### localData.csv
+This file contains the base values.
+Columns:
+- id: sample id (mandatory)
+- client_id: optional field, the app supports display of clustering on this field as well
+- data columns: at least 2 data columns need to be present. More than 2 data columns are supported. The column names are arbitrary and must not match reserved column names: id, cluster, client_id 
+##### Example
+```csv
+id;client_id;x;y;z
+1;1;-0.115257648318211;0.289555823437292;0.333954194475931
+2;1;-0.226069897739012;0.293898393621215;0.130668954544708
+3;1;0.0606059327164007;0.0297344961039227;0.112959671444335
+4;1;0.0398616396572761;-0.37563056412847;-0.35560909629883
+5;1;-0.21084222999711;0.592948181336414;-0.368794747648271
+```
+#### distanceMatrix.csv
+This file contains distances between samples. It is of n x n dimension, where n is the number of sample data.
+##### Example
+```csv
+1;2;3;4;5
+1;0;0.53851648071345;0.509901951359278;0.648074069840786;0.141421356237309
+2;0.53851648071345;0;0.3;0.331662479035541;0.608276253029822
+3;0.509901951359278;0.3;0;0.244948974278318;0.509901951359278
+4;0.648074069840786;0.331662479035541;0.244948974278318;0;0.648074069840786
+5;0.141421356237309;0.608276253029822;0.509901951359278;0.648074069840786;0
+```
+#### varianceExplained.csv <a name="variance-explained"></a>
+This file contains the eigenvalues for components.
+Columns:
+- component: mandatory field, it contains the name of the component
+- eigenvalue: mandatory field, it contains the eigenvalue of the component
+##### Example
+```csv
+component;eigenvalue
+x;0.729624454
+y;0.408507618
+z;0.228507618
+```
+#### clustering.csv
+This file contains the cluste distribution of the samples.
+Columns:
+- id: mandatory, sample id
+- cluster: mandatory, cluster id
+##### Example
+```csv
+id;cluster
+1;1
+2;1
+3;1
+4;1
+5;1
+```
+#### silhouette.csv
+This file contains data used to display the clusters silhouette plot.
+Columns:
+- index column, mandatory
+- y: mandatory, contains the value to be plotted
+- cluster: mandatory, contains the cluster id
+##### Example
+```csv
+x;y;cluster
+1;0.369499266613275;1
+2;0.783307729521766;1
+3;0.0627545099705458;1
+4;0.205028521828353;1
+5;0.915254552382976;1
+```
+### General requirements for input data
+- the number of samples has to be the same in all files
+- the sample ids must be persistent
+
+### Download
+For a better understanding an example data set can be downloaded by clicking [here](./assets/data.zip).
+
+## Limitations
+- the app supports displaying 5 confounding factors simultaneously
+- if more than 5 confounding factors are present in the confoundingMeta.csv file, it will display the first 5
+## Screenshots
+### Confounders tab
+Confounding factors filter with scatter plot
+![Confounders tab](/assets/confounders-1.png)
+
+Scatter plot with confounding factors diagrams
+![Confounders tab](/assets/confounders-2.png)
+
+View selected data from scatter plot 
+![Confounders tab](/assets/confounders-3.png)
+
+### Distances tab
+Clustergram
+![Distances tab](/assets/distances.png)
+
+### Clustering Quality tab
+Silhouette diagram
+![Clustering Quality tab](/assets/clustering-quality.png)
+
+### Scree plot
+![Scree plot tab](/assets/scree-plot.png)
+
 
 

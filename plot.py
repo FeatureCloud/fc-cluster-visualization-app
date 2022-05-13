@@ -55,7 +55,8 @@ def assemble_dataframes():
     try:
         DISTANCE_DF = pd.read_csv(f'{DATA_DIR}/distanceMatrix.csv', delimiter=DELIMITER, skiprows=0, index_col=0)
     except IOError:
-        print("Error: distanceMatrix.csv does not appear to exist.")
+        # @TODO display toast message in UI
+        print("Warning: distanceMatrix.csv does not appear to exist.")
 
     try:
         CONFOUNDING_META_BASE = pd.read_csv(f'{DATA_DIR}/confoundingData.meta', delimiter=DELIMITER, skiprows=0)
@@ -71,13 +72,15 @@ def assemble_dataframes():
         confounding_data = confounding_data[
             confounding_data.columns.intersection(confounding_data_expected_column_list)]
     except IOError:
-        print("Error: Confounding data is missing")
+        # @TODO display toast message in UI
+        print("Warning: Confounding data is missing")
         confounding_data = []
 
     try:
         DF_SCREE_PLOT = pd.read_csv(f'{DATA_DIR}/variance_explained.csv', delimiter=DELIMITER, skiprows=0)
     except IOError:
-        print("Error: variance_explained.csv does not exist")
+        # @TODO display toast message in UI
+        print("Warning: variance_explained.csv does not exist")
 
     base_df = pd.read_csv(f'{DATA_DIR}/localData.csv', delimiter=DELIMITER, skiprows=0)
     DATA_COLUMNS = base_df.columns.to_list()
@@ -164,7 +167,6 @@ def create_dash(path_prefix):
         base_content = [
             html.Div(
                 [
-                    # dcc.Store(id='confounding-meta-store'),
                     dbc.Row(
                         [
                             dbc.Col(
@@ -184,7 +186,6 @@ def create_dash(path_prefix):
                             ),
                             dbc.Col(children=get_k_filter(id_post_tag)),
                             dbc.Col(get_cluster_values_filter(id_post_tag)),
-                            # dbc.Col(get_client_values_filter(id_post_tag)),
                             dbc.Col(
                                 children=
                                 [
@@ -314,7 +315,7 @@ def create_dash(path_prefix):
             selected_clusters = cluster_checklist_values
         K_VALUE_CONFOUNDERS = k_value
         # filter base dataframe
-        index_list = filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values,
+        index_list = filter_dataframe_on_confounding_factors(confounding_df, selected_clusters, checklist_values,
                                                               range_values, use_clusters)
         confounding_df = confounding_df[confounding_df.index.isin(index_list)]
         fig = get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts, clustering_field)
@@ -552,7 +553,7 @@ def create_dash(path_prefix):
         if K_VALUE_DISTANCE != k_value:
             selected_clusters = cluster_checklist_values
         K_VALUE_DISTANCE = k_value
-        index_list = filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters,
+        index_list = filter_dataframe_on_confounding_factors(confounding_df, selected_clusters,
                                                               checklist_values, range_values, True)
         display_error_toaster = False
         if len(index_list) == 0:
@@ -633,23 +634,6 @@ def create_dash(path_prefix):
             return not is_open
         return is_open
 
-    # @app.callback(
-    #     Output('select-confounding-factors-error', 'is_open'),
-    #     Input('confounding-factors-selector-checklist', 'value'),
-    # )
-    # def setConfoundingFactors(selected_confounding_factors):
-    #     global CONFOUNDING_META, CONFOUNDING_META_BASE
-    #     nr_selected_confounding_factors = len(selected_confounding_factors)
-    #     if nr_selected_confounding_factors > MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY or nr_selected_confounding_factors < 1:
-    #         return True
-    #     else:
-    #         column_list = []
-    #         for cf in selected_confounding_factors:
-    #             column_list.append(cf.lower())
-    #         CONFOUNDING_META = CONFOUNDING_META_BASE.loc[CONFOUNDING_META_BASE['name'].isin(column_list)]
-    #     return False
-
-
     return app
 
 
@@ -688,7 +672,7 @@ def render_distances():
     )
 
 
-def filter_dataframe_on_counfounding_factors(confounding_df, selected_clusters, checklist_values, range_values, use_clusters):
+def filter_dataframe_on_confounding_factors(confounding_df, selected_clusters, checklist_values, range_values, use_clusters):
     selected_cluster_ids = []
     if len(CONFOUNDING_META) == 0:
         return confounding_df.index.tolist()
@@ -866,51 +850,11 @@ def get_confounding_factors_filter(id_pre_tag):
     for j in range(0, confounding_base_length):
         confounding_selector_options.append(CONFOUNDING_META_BASE.iloc[j]['name'].capitalize())
 
-    # select_button_style = {'float': 'right'}
-    # if confounding_base_length <= MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY:
-    #     select_button_style['display'] = 'none'
-    #     last_element_to_check = confounding_length
-    # else:
-    #     last_element_to_check = MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY
-
     html_elem_list.append(
         dbc.Row(
             children=
             [
                 dbc.Col(html.H5("Confounding factors filter")),
-                # dbc.Col(
-                #     dbc.Button('Select confounding factors', id='btn-open-confounding-modal', n_clicks=0,
-                #                color='primary', className='me-1', style=select_button_style),
-                # ),
-                # dbc.Modal(
-                #     [
-                #         dbc.ModalHeader(dbc.ModalTitle("Select confounding factors")),
-                #         dbc.ModalBody(
-                #             children=[
-                #                 html.P(f'A maximum of {MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY} confounding factors can be selected'),
-                #                 dcc.Checklist(
-                #                     confounding_selector_options, confounding_selector_options[0:last_element_to_check],
-                #                     id='confounding-factors-selector-checklist', className='fc-checklist')
-                #             ]
-                #         ),
-                #         dbc.ModalFooter(
-                #             dbc.Button(
-                #                 "Set", id="btn-set-confounding-factors", className="ms-auto", n_clicks=0
-                #             )
-                #         ),
-                #     ],
-                #     id="confounding-modal",
-                #     is_open=False,
-                # ),
-                # dbc.Toast(
-                #     [html.P(f'Please select a maximum of {MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY} confounding factors to continue', className="mb-0")],
-                #     id="select-confounding-factors-error",
-                #     header="Error",
-                #     duration=4000,
-                #     is_open=False,
-                #     icon="danger",
-                #     style={"position": "fixed", "top": 66, "right": 10, "width": 350},
-                # ),
             ]
         )
     )

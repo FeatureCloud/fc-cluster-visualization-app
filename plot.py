@@ -52,8 +52,15 @@ def assemble_dataframes():
     global DISTANCE_DF, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, \
         K_VALUES, DATA_COLUMNS, DATA_ERRORS
     DATAFRAMES_BY_K_VALUE = []
-    base_df = pd.read_csv(f'{DATA_DIR}/localData.csv', delimiter=DELIMITER, skiprows=0)
-    nr_of_samples = len(base_df.index)
+    if not os.path.isdir(DATA_DIR):
+        DATA_ERRORS += "Data folder is missing."
+
+    try:
+        base_df = pd.read_csv(f'{DATA_DIR}/localData.csv', delimiter=DELIMITER, skiprows=0)
+        nr_of_samples = len(base_df.index)
+    except IOError:
+        DATA_ERRORS += "Local data is missing"
+        return
 
     try:
         DISTANCE_DF = pd.read_csv(f'{DATA_DIR}/distanceMatrix.csv', delimiter=DELIMITER, skiprows=0, index_col=0)
@@ -142,30 +149,45 @@ def create_dash(path_prefix):
     app = Dash(__name__,
                requests_pathname_prefix=path_prefix,
                title='FeatureCloud Cluster Visualization App')
-    distance_style = {'display': 'none'} if len(DISTANCE_DF) == 0 else {}
-    scree_plot_style = {'display': 'none'} if len(DF_SCREE_PLOT) == 0 else {}
-    cluster_quality_style = {'display': 'none'} if len(K_VALUES) <= 1 else {}
+    if len(DATAFRAMES_BY_K_VALUE) == 0:
+        f = open('README.md', 'r')
+        app.layout = html.Div([
+            dbc.Toast(
+                [html.P('Local data cannot be found.', className="mb-0")],
+                id="data-validation-toast",
+                header="Error",
+                duration=10000,
+                is_open=True,
+                icon="danger",
+                style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+            ),
+            dcc.Markdown(f.read())
+        ])
+    else:
+        distance_style = {'display': 'none'} if len(DISTANCE_DF) == 0 else {}
+        scree_plot_style = {'display': 'none'} if len(DF_SCREE_PLOT) == 0 else {}
+        cluster_quality_style = {'display': 'none'} if len(K_VALUES) <= 1 else {}
 
-    app.layout = html.Div([
-        html.H2('FeatureCloud Cluster Visualization App', className='fc-header'),
-        dcc.Tabs(id="tabs-ct", value='tab-confounders', children=[
-            dcc.Tab(label='Confounders', value='tab-confounders'),
-            dcc.Tab(label='Distances', value='tab-distances', style=distance_style),
-            dcc.Tab(label='Clustering Quality', value='tab-clustering-quality', style=cluster_quality_style),
-            dcc.Tab(label='Scree plot', value='tab-scree-plot', style=scree_plot_style),
-            dcc.Tab(label='Help', value='tab-help'),
-        ]),
-        html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'}),
-        dbc.Toast(
-            [html.P(DATA_ERRORS, className="mb-0")],
-            id="data-validation-toast",
-            header="Error",
-            duration=10000,
-            is_open=False,
-            icon="danger",
-            style={"position": "fixed", "top": 66, "right": 10, "width": 350},
-        ),
-    ])
+        app.layout = html.Div([
+            html.H2('FeatureCloud Cluster Visualization App', className='fc-header'),
+            dcc.Tabs(id="tabs-ct", value='tab-confounders', children=[
+                dcc.Tab(label='Confounders', value='tab-confounders'),
+                dcc.Tab(label='Distances', value='tab-distances', style=distance_style),
+                dcc.Tab(label='Clustering Quality', value='tab-clustering-quality', style=cluster_quality_style),
+                dcc.Tab(label='Scree plot', value='tab-scree-plot', style=scree_plot_style),
+                dcc.Tab(label='Help', value='tab-help'),
+            ]),
+            html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'}),
+            dbc.Toast(
+                [html.P(DATA_ERRORS, className="mb-0")],
+                id="data-validation-toast",
+                header="Error",
+                duration=10000,
+                is_open=False,
+                icon="danger",
+                style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+            ),
+        ])
 
     @app.callback(
         Output('tabs-content-ct', 'children'),

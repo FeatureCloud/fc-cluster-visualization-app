@@ -62,13 +62,17 @@ data
 │   distanceMatrix.csv
 │   varianceExplained.csv
 ```
+
+#### Download
+For a better understanding an example data set can be downloaded by clicking [here](./assets/data.zip).
+
 Notes:
-- All files are mandatory. 
-- At least one K<n> folders is to be be present 
-- All files under K<n> folders are mandatory 
+- localData.csv file is mandatory. The rest of files are optional.
+- All files under K<n> folders (if the folder exists) are mandatory 
 ### Delimiter
 The delimiter used in all files is the ";" character
 ### Expected file structure
+
 #### confoundingData.csv
 This file contains all confounding factors related to local data.
 First column is the id (mandatory), followed by a maximum of 5 of columns of confounders. The confounders column names are arbitrary and must not match reserved column names: id, cluster, client_id
@@ -142,7 +146,7 @@ y;0.408507618
 z;0.228507618
 ```
 #### clustering.csv
-This file contains the cluste distribution of the samples.
+This file contains the cluster distribution of the samples.
 Columns:
 - id: mandatory, sample id
 - cluster: mandatory, cluster id
@@ -173,9 +177,6 @@ x;y;cluster
 ### General requirements for input data
 - the number of samples has to be the same in all files
 - the sample ids must be persistent
-
-### Download
-For a better understanding an example data set can be downloaded by clicking [here](./assets/data.zip).
 
 ## Limitations
 - the app supports displaying 5 confounding factors simultaneously

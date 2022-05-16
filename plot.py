@@ -95,36 +95,37 @@ def assemble_dataframes():
     if 'client_id' in DATA_COLUMNS:
         DATA_COLUMNS.remove('client_id')
 
-    for dir_name in [f.name for f in os.scandir(RESULT_DIR) if f.is_dir()]:
-        cluster_nr = int(dir_name.split('_')[1])
-        K_VALUES.append(cluster_nr)
-        cluster_data = pd.read_csv(f'{RESULT_DIR}/{dir_name}/clustering.csv', delimiter=DELIMITER, skiprows=0)
-        df = pd.merge(base_df, cluster_data, on="id")
+    if os.path.isdir(DATA_DIR) and os.path.isdir(RESULT_DIR):
+        for dir_name in [f.name for f in os.scandir(RESULT_DIR) if f.is_dir()]:
+            cluster_nr = int(dir_name.split('_')[1])
+            K_VALUES.append(cluster_nr)
+            cluster_data = pd.read_csv(f'{RESULT_DIR}/{dir_name}/clustering.csv', delimiter=DELIMITER, skiprows=0)
+            df = pd.merge(base_df, cluster_data, on="id")
 
-        # put cluster column in different place to be used in hovertemplate, based on customdata parameter
-        column_list = df.columns.to_list()
-        column_list.remove('cluster')
-        if 'client_id' in column_list:
-            index = column_list.index('client_id') + 1
-        else:
-            index = column_list.index('id') + 1
-        column_list.insert(index, 'cluster')
-        df = df[column_list]
-        if len(confounding_data) > 0:
-            df = pd.merge(df, confounding_data, on='id')
-        DATAFRAMES_BY_K_VALUE.append(
-            {
-                'k': cluster_nr,
-                'df': df,
-            }
-        )
-        DF_SILHOUETTE.append(
-            {
-                'k': cluster_nr,
-                'df': pd.read_csv(f'{RESULT_DIR}/{dir_name}/silhouette.csv', delimiter=DELIMITER).sort_values(
-                    ["cluster", "y"], ascending=(True, False)).reset_index(),
-            }
-        )
+            # put cluster column in different place to be used in hovertemplate, based on customdata parameter
+            column_list = df.columns.to_list()
+            column_list.remove('cluster')
+            if 'client_id' in column_list:
+                index = column_list.index('client_id') + 1
+            else:
+                index = column_list.index('id') + 1
+            column_list.insert(index, 'cluster')
+            df = df[column_list]
+            if len(confounding_data) > 0:
+                df = pd.merge(df, confounding_data, on='id')
+            DATAFRAMES_BY_K_VALUE.append(
+                {
+                    'k': cluster_nr,
+                    'df': df,
+                }
+            )
+            DF_SILHOUETTE.append(
+                {
+                    'k': cluster_nr,
+                    'df': pd.read_csv(f'{RESULT_DIR}/{dir_name}/silhouette.csv', delimiter=DELIMITER).sort_values(
+                        ["cluster", "y"], ascending=(True, False)).reset_index(),
+                }
+            )
     if len(K_VALUES) == 0 or len(DATAFRAMES_BY_K_VALUE) == 0 or len(DF_SILHOUETTE) == 0:
         K_VALUES.append(0)
         base_df['cluster'] = 0

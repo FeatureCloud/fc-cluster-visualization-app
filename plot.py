@@ -152,17 +152,23 @@ def create_dash(path_prefix):
     if len(DATAFRAMES_BY_K_VALUE) == 0:
         f = open('README.md', 'r')
         app.layout = html.Div([
-            dbc.Toast(
-                [html.P('Local data cannot be found.', className="mb-0")],
-                id="data-validation-toast",
-                header="Error",
-                duration=10000,
-                is_open=True,
-                icon="danger",
-                style={"position": "fixed", "top": 66, "right": 10, "width": 350},
-            ),
-            dcc.Markdown(f.read())
-        ])
+            dbc.Row(
+                dbc.Col(width=8, children=[
+                    dbc.Toast(
+                        [html.P('Local data cannot be found.', className="mb-0")],
+                        id="data-validation-toast",
+                        header="Error",
+                        duration=10000,
+                        is_open=True,
+                        icon="danger",
+                        style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+                    ),
+                    dcc.Markdown(f.read())
+                ]),
+                justify='center'
+            )
+        ],
+        className='help-ct')
     else:
         distance_style = {'display': 'none'} if len(DISTANCE_DF) == 0 else {}
         scree_plot_style = {'display': 'none'} if len(DF_SCREE_PLOT) == 0 else {}
@@ -810,7 +816,7 @@ def render_scree_plot():
 
 def render_help():
     f = open('README.md', 'r')
-    return dcc.Markdown(f.read())
+    return dcc.Markdown(f.read(), className='help-ct')
 
 
 def confidence_ellipse(x, y, n_std=1.96, size=100):

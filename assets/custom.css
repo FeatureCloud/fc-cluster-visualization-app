@@ -39,3 +39,7 @@
     float: left;
     font-size: inherit;
 }
+
+.help-ct img {
+    max-width: 100%;
+}

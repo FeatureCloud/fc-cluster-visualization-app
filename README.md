@@ -184,24 +184,24 @@ x;y;cluster
 ## Screenshots
 ### Confounders tab
 Confounding factors filter with scatter plot
-![Confounders tab](/assets/confounders-1.png)
+![Confounders tab](./assets/confounders-1.png)
 
 Scatter plot with confounding factors diagrams
-![Confounders tab](/assets/confounders-2.png)
+![Confounders tab](./assets/confounders-2.png)
 
 View selected data from scatter plot 
-![Confounders tab](/assets/confounders-3.png)
+![Confounders tab](./assets/confounders-3.png)
 
 ### Distances tab
 Clustergram
-![Distances tab](/assets/distances.png)
+![Distances tab](./assets/distances.png)
 
 ### Clustering Quality tab
 Silhouette diagram
-![Clustering Quality tab](/assets/clustering-quality.png)
+![Clustering Quality tab](./assets/clustering-quality.png)
 
 ### Scree plot
-![Scree plot tab](/assets/scree-plot.png)
+![Scree plot tab](./assets/scree-plot.png)
 
 
 

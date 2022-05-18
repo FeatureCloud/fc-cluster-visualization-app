@@ -42,6 +42,7 @@ def setup(env):
 
     if env == 'fc':
         DATA_DIR = '/mnt/input'
+        os.chdir('./app')
     else:
         DATA_DIR = "./data"
 

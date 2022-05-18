@@ -149,7 +149,8 @@ def assemble_dataframes():
 def create_dash(path_prefix):
     app = Dash(__name__,
                requests_pathname_prefix=path_prefix,
-               title='FeatureCloud Cluster Visualization App')
+               title='FeatureCloud Cluster Visualization App',
+               suppress_callback_exceptions=True)
     if len(DATAFRAMES_BY_K_VALUE) == 0:
         f = open('README.md', 'r')
         app.layout = html.Div([
@@ -688,17 +689,6 @@ def create_dash(path_prefix):
             },
         )
         return fig
-
-    @app.callback(
-        Output('confounding-modal', 'is_open'),
-        Input('btn-open-confounding-modal', 'n_clicks'),
-        Input('btn-set-confounding-factors', 'n_clicks'),
-        State('confounding-modal', 'is_open')
-    )
-    def toggle_modal(n_open, n_close, is_open):
-        if n_open or n_close:
-            return not is_open
-        return is_open
 
     return app
 

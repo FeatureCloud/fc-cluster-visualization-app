@@ -143,7 +143,7 @@ def assemble_dataframes():
         DATAFRAMES_BY_K_VALUE.append(
             {
                 'k': 0,
-                'df': pd.merge(base_df, confounding_data, on='id')
+                'df': pd.merge(base_df, confounding_data, on='id') if len(confounding_data) > 0 else base_df
             }
         )
         DATA_ERRORS += "Error: Clustering information is missing or corrupt.\n"

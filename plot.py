@@ -22,6 +22,7 @@ DATAFRAMES_BY_K_VALUE = []
 DF_SILHOUETTE = []
 DELIMITER = ';'
 DATA_DIR = ''
+OUTPUT_DIR = ''
 RESULT_DIR = ''
 K_VALUE_CONFOUNDERS = 0
 K_VALUE_DISTANCE = 0
@@ -38,13 +39,15 @@ styles = {
 
 
 def setup(env):
-    global DATA_DIR, RESULT_DIR
+    global DATA_DIR, RESULT_DIR, OUTPUT_DIR
 
     if env == 'fc':
         DATA_DIR = '/mnt/input'
+        OUTPUT_DIR = '/mnt/output'
         os.chdir('./app')
     else:
         DATA_DIR = "./data"
+        OUTPUT_DIR = f'{DATA_DIR}/output'
 
     RESULT_DIR = f'{DATA_DIR}/results'
 
@@ -140,7 +143,7 @@ def assemble_dataframes():
         DATAFRAMES_BY_K_VALUE.append(
             {
                 'k': 0,
-                'df': pd.merge(base_df, confounding_data, on='id')
+                'df': pd.merge(base_df, confounding_data, on='id') if len(confounding_data) > 0 else base_df
             }
         )
         DATA_ERRORS += "Error: Clustering information is missing or corrupt.\n"
@@ -591,6 +594,11 @@ def create_dash(path_prefix):
             group_name = group_name.strip()
             if len(group_name) == 0:
                 group_name = default_file_name
+
+        # Save data in file system as well
+        if not os.path.isdir(OUTPUT_DIR):
+            os.mkdir(OUTPUT_DIR)
+        df.to_csv(os.path.join(OUTPUT_DIR, f'{group_name}.csv'))
 
         return dcc.send_data_frame(df.to_csv, f'{group_name}.csv')
 

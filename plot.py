@@ -1,3 +1,5 @@
+import distutils
+import errno
 import os
 import shutil
 
@@ -71,7 +73,7 @@ def setup(env):
         DATA_DIR = '/mnt/input'
         OUTPUT_DIR = '/mnt/output'
         # copy input folder content to output folder
-        shutil.copy(DATA_DIR, OUTPUT_DIR)
+        shutil.copytree(DATA_DIR, OUTPUT_DIR, dirs_exist_ok=True)
 
         os.chdir('./app')
 

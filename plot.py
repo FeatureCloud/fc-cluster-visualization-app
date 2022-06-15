@@ -1,6 +1,8 @@
 import os
+import shutil
 
 import dash_bio
+import yaml
 from dash import Dash, dcc, html
 import dash_bootstrap_components as dbc
 import dash_daq as daq
@@ -23,12 +25,22 @@ DF_SILHOUETTE = []
 DELIMITER = ';'
 DATA_DIR = ''
 OUTPUT_DIR = ''
-RESULT_DIR = ''
 K_VALUE_CONFOUNDERS = 0
 K_VALUE_DISTANCE = 0
 HEATMAP_INDEX_LIST = []
 MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY = 5
 DATA_ERRORS = ''
+
+# Configurable paths for data files
+LOCAL_DATA_PATH = ''
+CONFOUNDING_DATA_PATH = ''
+CONFOUNDING_META_PATH = ''
+DISTANCE_MATRIX_PATH = ''
+VARIANCE_EXPLAINED_PATH = ''
+K_VALUES_CLUSTERING_RESULT_DIR = ''
+K_VALUES_CLUSTERING_FILE_NAME = ''
+K_VALUES_SILHOUETTE_FILE_NAME = ''
+DOWNLOAD_DIR = ''
 
 styles = {
     'pre': {
@@ -39,45 +51,89 @@ styles = {
 
 
 def setup(env):
-    global DATA_DIR, RESULT_DIR, OUTPUT_DIR
+    global DATA_DIR, OUTPUT_DIR, LOCAL_DATA_PATH, CONFOUNDING_DATA_PATH, CONFOUNDING_META_PATH, \
+        DISTANCE_MATRIX_PATH, VARIANCE_EXPLAINED_PATH, K_VALUES_CLUSTERING_RESULT_DIR, K_VALUES_CLUSTERING_FILE_NAME, \
+        K_VALUES_SILHOUETTE_FILE_NAME, DOWNLOAD_DIR
+
+    DATA_DIR = "./data"
+    OUTPUT_DIR = f'{DATA_DIR}/output'
+    LOCAL_DATA_PATH = f'{DATA_DIR}/localData.csv'
+    DISTANCE_MATRIX_PATH = f'{DATA_DIR}/distanceMatrix.csv'
+    CONFOUNDING_META_PATH = f'{DATA_DIR}/confoundingData.meta'
+    CONFOUNDING_DATA_PATH = f'{DATA_DIR}/confoundingData.csv'
+    VARIANCE_EXPLAINED_PATH = f'{DATA_DIR}/variance_explained.csv'
+    K_VALUES_CLUSTERING_RESULT_DIR = f'{DATA_DIR}/results'
+    K_VALUES_CLUSTERING_FILE_NAME = 'clustering.csv'
+    K_VALUES_SILHOUETTE_FILE_NAME = 'silhouette.csv'
+    DOWNLOAD_DIR = f'{OUTPUT_DIR}/downloads'
 
     if env == 'fc':
         DATA_DIR = '/mnt/input'
         OUTPUT_DIR = '/mnt/output'
+        # copy input folder content to output folder
+        shutil.copy(DATA_DIR, OUTPUT_DIR)
+
         os.chdir('./app')
-    else:
-        DATA_DIR = "./data"
-        OUTPUT_DIR = f'{DATA_DIR}/output'
 
-    RESULT_DIR = f'{DATA_DIR}/results'
+    # process config.yml if there is any
+    config_file_path = DATA_DIR + '/config.yml'
+    try:
+        with open(config_file_path) as f:
+            config = yaml.load(f, Loader=yaml.FullLoader)
+            if 'fc-cluster-visualization-app' in config:
+                config = config['fc-cluster-visualization-app']
+                if 'data-dir' in config:
+                    DATA_DIR = config['data-dir']
+                if 'local-data-path' in config:
+                    LOCAL_DATA_PATH = config['local-data-path']
+                if 'distance-matrix-path' in config:
+                    DISTANCE_MATRIX_PATH = config['distance-matrix-path']
+                if 'confounding-meta-path' in config:
+                    CONFOUNDING_META_PATH = config['confounding-meta-path']
+                if 'confounding-data-path' in config:
+                    CONFOUNDING_DATA_PATH = config['confounding-data-path']
+                if 'variance-explained-path' in config:
+                    VARIANCE_EXPLAINED_PATH = config['variance-explained-path']
+                if 'k-values-clustering-result-dir' in config:
+                    K_VALUES_CLUSTERING_RESULT_DIR = config['k-values-clustering-result-dir']
+                if 'k-values-clustering-file-name' in config:
+                    K_VALUES_CLUSTERING_FILE_NAME = config['k-values-clustering-file-name']
+                if 'k-values-silhouette-file-name' in config:
+                    K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
+                if 'download-dir' in config:
+                    DOWNLOAD_DIR = config['download-dir']
 
+    except IOError:
+        print('No config file found')
 
 def assemble_dataframes():
     global DISTANCE_DF, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, \
-        K_VALUES, DATA_COLUMNS, DATA_ERRORS
+        K_VALUES, DATA_COLUMNS, DATA_ERRORS, LOCAL_DATA_PATH, DISTANCE_MATRIX_PATH, CONFOUNDING_META_PATH, \
+        CONFOUNDING_DATA_PATH, VARIANCE_EXPLAINED_PATH, K_VALUES_CLUSTERING_RESULT_DIR, K_VALUES_CLUSTERING_FILE_NAME, \
+        K_VALUES_SILHOUETTE_FILE_NAME
     DATAFRAMES_BY_K_VALUE = []
     if not os.path.isdir(DATA_DIR):
         DATA_ERRORS += "Data folder is missing."
 
     try:
-        base_df = pd.read_csv(f'{DATA_DIR}/localData.csv', delimiter=DELIMITER, skiprows=0)
+        base_df = pd.read_csv(LOCAL_DATA_PATH, delimiter=DELIMITER, skiprows=0)
         nr_of_samples = len(base_df.index)
     except IOError:
         DATA_ERRORS += "Local data is missing"
         return
 
     try:
-        DISTANCE_DF = pd.read_csv(f'{DATA_DIR}/distanceMatrix.csv', delimiter=DELIMITER, skiprows=0, index_col=0)
+        DISTANCE_DF = pd.read_csv(DISTANCE_MATRIX_PATH, delimiter=DELIMITER, skiprows=0, index_col=0)
         if len(DISTANCE_DF.columns) != len(DISTANCE_DF.index) or len(DISTANCE_DF.index) != nr_of_samples:
-            DATA_ERRORS += "Data inconsistency in distance.csv. Number of samples are not matching \n"
+            DATA_ERRORS += f'Data inconsistency in {DISTANCE_MATRIX_PATH}. Number of samples are not matching \n'
     except IOError:
-        DATA_ERRORS += "Warning: distanceMatrix.csv does not appear to exist.\n"
+        DATA_ERRORS += f'Warning: {DISTANCE_MATRIX_PATH} does not appear to exist.\n'
     except pd.errors.EmptyDataError:
         DATA_ERRORS += "Error: Distance matrix is empty.\n"
 
     try:
-        CONFOUNDING_META = pd.read_csv(f'{DATA_DIR}/confoundingData.meta', delimiter=DELIMITER, skiprows=0)
-        confounding_data = pd.read_csv(f'{DATA_DIR}/confoundingData.csv', delimiter=DELIMITER, skiprows=0)
+        CONFOUNDING_META = pd.read_csv(CONFOUNDING_META_PATH, delimiter=DELIMITER, skiprows=0)
+        confounding_data = pd.read_csv(CONFOUNDING_DATA_PATH, delimiter=DELIMITER, skiprows=0)
         if len(CONFOUNDING_META) > MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY:
             CONFOUNDING_META = CONFOUNDING_META.head(MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY)
             DATA_ERRORS += f'Warning: The application supports a maximum of {MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY} of confounding factors. ' \
@@ -95,22 +151,22 @@ def assemble_dataframes():
         confounding_data = []
 
     try:
-        DF_SCREE_PLOT = pd.read_csv(f'{DATA_DIR}/variance_explained.csv', delimiter=DELIMITER, skiprows=0)
+        DF_SCREE_PLOT = pd.read_csv(VARIANCE_EXPLAINED_PATH, delimiter=DELIMITER, skiprows=0)
     except IOError:
-        DATA_ERRORS += "Warning: variance_explained.csv does not exist.\n"
+        DATA_ERRORS += f'Warning: {VARIANCE_EXPLAINED_PATH} does not exist.\n'
     except pd.errors.EmptyDataError:
-        DATA_ERRORS += "Error: variance_explained.csv is empty.\n"
+        DATA_ERRORS += f'Error: {VARIANCE_EXPLAINED_PATH} is empty.\n'
 
     DATA_COLUMNS = base_df.columns.to_list()
     DATA_COLUMNS.remove('id')
     if 'client_id' in DATA_COLUMNS:
         DATA_COLUMNS.remove('client_id')
 
-    if os.path.isdir(DATA_DIR) and os.path.isdir(RESULT_DIR):
-        for dir_name in [f.name for f in os.scandir(RESULT_DIR) if f.is_dir()]:
+    if os.path.isdir(DATA_DIR) and os.path.isdir(K_VALUES_CLUSTERING_RESULT_DIR):
+        for dir_name in [f.name for f in os.scandir(K_VALUES_CLUSTERING_RESULT_DIR) if f.is_dir()]:
             cluster_nr = int(dir_name.split('_')[1])
             K_VALUES.append(cluster_nr)
-            cluster_data = pd.read_csv(f'{RESULT_DIR}/{dir_name}/clustering.csv', delimiter=DELIMITER, skiprows=0)
+            cluster_data = pd.read_csv(f'{K_VALUES_CLUSTERING_RESULT_DIR}/{dir_name}/{K_VALUES_CLUSTERING_FILE_NAME}', delimiter=DELIMITER, skiprows=0)
             df = pd.merge(base_df, cluster_data, on="id")
 
             # put cluster column in different place to be used in hovertemplate, based on customdata parameter
@@ -133,7 +189,7 @@ def assemble_dataframes():
             DF_SILHOUETTE.append(
                 {
                     'k': cluster_nr,
-                    'df': pd.read_csv(f'{RESULT_DIR}/{dir_name}/silhouette.csv', delimiter=DELIMITER).sort_values(
+                    'df': pd.read_csv(f'{K_VALUES_CLUSTERING_RESULT_DIR}/{dir_name}/{K_VALUES_SILHOUETTE_FILE_NAME}', delimiter=DELIMITER).sort_values(
                         ["cluster", "y"], ascending=(True, False)).reset_index(),
                 }
             )
@@ -596,9 +652,9 @@ def create_dash(path_prefix):
                 group_name = default_file_name
 
         # Save data in file system as well
-        if not os.path.isdir(OUTPUT_DIR):
-            os.mkdir(OUTPUT_DIR)
-        df.to_csv(os.path.join(OUTPUT_DIR, f'{group_name}.csv'))
+        if not os.path.isdir(DOWNLOAD_DIR):
+            os.mkdir(DOWNLOAD_DIR)
+        df.to_csv(os.path.join(DOWNLOAD_DIR, f'{group_name}.csv'))
 
         return dcc.send_data_frame(df.to_csv, f'{group_name}.csv')
 

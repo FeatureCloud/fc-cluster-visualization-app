@@ -1,5 +1,3 @@
-import distutils
-import errno
 import os
 import shutil
 
@@ -14,6 +12,7 @@ import plotly.graph_objects as go
 import pandas as pd
 
 import numpy as np
+from flask import request
 from plotly.subplots import make_subplots
 from plotly.tools import DEFAULT_PLOTLY_COLORS
 
@@ -44,6 +43,8 @@ K_VALUES_CLUSTERING_FILE_NAME = ''
 K_VALUES_SILHOUETTE_FILE_NAME = ''
 DOWNLOAD_DIR = ''
 
+ENV = ''
+
 styles = {
     'pre': {
         'border': 'thin lightgrey solid',
@@ -55,7 +56,9 @@ styles = {
 def setup(env):
     global DATA_DIR, OUTPUT_DIR, LOCAL_DATA_PATH, CONFOUNDING_DATA_PATH, CONFOUNDING_META_PATH, \
         DISTANCE_MATRIX_PATH, VARIANCE_EXPLAINED_PATH, K_VALUES_CLUSTERING_RESULT_DIR, K_VALUES_CLUSTERING_FILE_NAME, \
-        K_VALUES_SILHOUETTE_FILE_NAME, DOWNLOAD_DIR
+        K_VALUES_SILHOUETTE_FILE_NAME, DOWNLOAD_DIR, ENV
+
+    ENV = env
 
     DATA_DIR = "./data"
     OUTPUT_DIR = f'{DATA_DIR}/output'
@@ -69,7 +72,7 @@ def setup(env):
     K_VALUES_SILHOUETTE_FILE_NAME = 'silhouette.csv'
     DOWNLOAD_DIR = f'{OUTPUT_DIR}/downloads'
 
-    if env == 'fc':
+    if ENV == 'fc':
         DATA_DIR = '/mnt/input'
         OUTPUT_DIR = '/mnt/output'
         # copy input folder content to output folder
@@ -104,9 +107,8 @@ def setup(env):
                     K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
                 if 'download-dir' in config:
                     DOWNLOAD_DIR = config['download-dir']
-
     except IOError:
-        print('No config file found')
+        print('No config file found, will work with default values.')
 
 def assemble_dataframes():
     global DISTANCE_DF, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, \
@@ -206,7 +208,6 @@ def assemble_dataframes():
         )
         DATA_ERRORS += "Error: Clustering information is missing or corrupt.\n"
 
-
 def create_dash(path_prefix):
     app = Dash(__name__,
                requests_pathname_prefix=path_prefix,
@@ -236,9 +237,20 @@ def create_dash(path_prefix):
         distance_style = {'display': 'none'} if len(DISTANCE_DF) == 0 else {}
         scree_plot_style = {'display': 'none'} if len(DF_SCREE_PLOT) == 0 else {}
         cluster_quality_style = {'display': 'none'} if len(K_VALUES) <= 1 else {}
+        finished_button_style = {'display': 'none'} if ENV != 'fc' else {'float': 'right'}
 
         app.layout = html.Div([
             html.H2('FeatureCloud Cluster Visualization App', className='fc-header'),
+            dbc.Button('Finished', id='btn-finished', color='primary', className='me-1',
+                       style=finished_button_style, title='Finished visualization, proceed to next step'),
+            dbc.Toast(
+                [html.P('Visualization finished. Will proceed to next step or finish the workflow.', className="mb-0")],
+                id="toaster-visualization-finished",
+                header="Visualization",
+                duration=5000,
+                is_open=False,
+                style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+            ),
             dcc.Tabs(id="tabs-ct", value='tab-confounders', children=[
                 dcc.Tab(label='Confounders', value='tab-confounders'),
                 dcc.Tab(label='Distances', value='tab-distances', style=distance_style),
@@ -279,6 +291,21 @@ def create_dash(path_prefix):
             return render_scree_plot(), show_toast
         elif tab == 'tab-help':
             return render_help(), show_toast
+
+    @app.callback(
+        Output('toaster-visualization-finished', 'is_open'),
+        Input('btn-finished', 'n_clicks'),
+    )
+    def set_finished(n_clicks):
+        if n_clicks is not None and n_clicks > 0:
+            # Stopping Dash
+            func = request.environ.get('werkzeug.server.shutdown')
+            if func is None:
+                raise RuntimeError('Not running with the Werkzeug Server')
+            func()
+            return True
+        return False
+
 
     def render_confounders():
         confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
@@ -655,7 +682,7 @@ def create_dash(path_prefix):
 
         # Save data in file system as well
         if not os.path.isdir(DOWNLOAD_DIR):
-            os.mkdir(DOWNLOAD_DIR)
+            os.makedirs(DOWNLOAD_DIR, exist_ok=True)
         df.to_csv(os.path.join(DOWNLOAD_DIR, f'{group_name}.csv'))
 
         return dcc.send_data_frame(df.to_csv, f'{group_name}.csv')
@@ -1100,11 +1127,22 @@ def get_client_values_filter(id_post_tag):
 
 
 def start(env, path_prefix):
+    def run_fc():
+        dash.run_server(debug=False, port=8050)
+
+    def run_native():
+        dash.run_server(debug=True, port=8050)
+
     setup(env)
     assemble_dataframes()
     dash = create_dash(path_prefix)
 
     if env == 'fc':
         dash.run_server(debug=False, port=8050)
+        # process = multiprocessing.Process(target=run_fc)
+        # process.start()
     else:
         dash.run_server(debug=True, port=8050)
+        # process = multiprocessing.Process(target=run_native)
+        # process.start()
+

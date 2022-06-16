@@ -1,0 +1,6 @@
+name;data_type;value_type
+age;continuous;integer
+sex;discrete;string
+race;discrete;string
+height;continuous;integer
+sugar-level;ordinal;low,medium,high

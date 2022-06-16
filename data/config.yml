@@ -1,0 +1,12 @@
+fc-cluster-visualization-app:
+  data-dir: 'data/exampleData'
+  local-data-path: 'data/exampleData/newLocalData.csv'
+  distance-matrix-path: 'data/exampleData/newDistanceMatrix.csv'
+  confounding-meta-path: 'data/exampleData/newConfoundingData.meta'
+  confounding-data-path: 'data/exampleData/newConfoundingData.csv'
+  variance-explained-path: 'data/exampleData/newVarianceExplained.csv'
+  k-values-clustering-result-dir: 'data/exampleData/results'
+  k-values-clustering-file-name: 'clustering.csv'
+  k-values-silhouette-file-name: 'silhouette.csv'
+  # all files downloaded from the browser will end up here too
+  download-dir: 'data/exampleData/downloads'

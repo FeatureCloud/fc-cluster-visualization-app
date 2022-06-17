@@ -178,9 +178,34 @@ x;y;cluster
 - the number of samples has to be the same in all files
 - the sample ids must be persistent
 
+## Config file support
+The app supports setting all data file and directory paths from config file. The config.yml file should be placed in the default data directory (mnt/input/data)
+Example:
+```yml
+fc-cluster-visualization-app:
+  data-dir: 'data/exampleData'
+  local-data-path: 'data/exampleData/localData.csv'
+  distance-matrix-path: 'data/exampleData/distanceMatrix.csv'
+  confounding-meta-path: 'data/exampleData/confoundingData.meta'
+  confounding-data-path: 'data/exampleData/confoundingData.csv'
+  variance-explained-path: 'data/exampleData/varianceExplained.csv'
+  k-values-clustering-result-dir: 'data/exampleData/results'
+  k-values-clustering-file-name: 'clustering.csv'
+  k-values-silhouette-file-name: 'silhouette.csv'
+  # all files downloaded from the browser will end up here too
+  download-dir: 'data/exampleData/downloads'
+```
+If config file is not present, the app will search for data in the default folder (/mnt/input/data). 
+Any key from the config file can be omitted, in that case the app will search in the default data directory.
+Keys should not be left with blank values. 
+
 ## Limitations
 - the app supports displaying 5 confounding factors simultaneously
 - if more than 5 confounding factors are present in the confoundingMeta.csv file, it will display the first 5
+
+## Workflow 
+When the app runs in a FeatureCloud workflow, a Finished button will be displayed in the upper right corner. Clicking on the button terminates the application, while the controller shuts down the Docker container. Also, input folder content will be copied to the output folder. 
+
 ## Screenshots
 ### Confounders tab
 Confounding factors filter with scatter plot

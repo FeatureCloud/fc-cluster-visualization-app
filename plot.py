@@ -24,6 +24,7 @@ K_VALUES = []
 DATAFRAMES_BY_K_VALUE = []
 DF_SILHOUETTE = []
 DELIMITER = ';'
+BASE_DIR_FC_ENV = '/mnt/input'
 DATA_DIR = ''
 OUTPUT_DIR = ''
 K_VALUE_CONFOUNDERS = 0
@@ -56,7 +57,7 @@ styles = {
 def setup(env):
     global DATA_DIR, OUTPUT_DIR, LOCAL_DATA_PATH, CONFOUNDING_DATA_PATH, CONFOUNDING_META_PATH, \
         DISTANCE_MATRIX_PATH, VARIANCE_EXPLAINED_PATH, K_VALUES_CLUSTERING_RESULT_DIR, K_VALUES_CLUSTERING_FILE_NAME, \
-        K_VALUES_SILHOUETTE_FILE_NAME, DOWNLOAD_DIR, ENV
+        K_VALUES_SILHOUETTE_FILE_NAME, DOWNLOAD_DIR, ENV, BASE_DIR_FC_ENV
 
     ENV = env
 
@@ -88,27 +89,70 @@ def setup(env):
             if 'fc-cluster-visualization-app' in config:
                 config = config['fc-cluster-visualization-app']
                 if 'data-dir' in config:
-                    DATA_DIR = config['data-dir']
+                    if ENV == 'fc':
+                        DATA_DIR = os.path.join(BASE_DIR_FC_ENV, config['data-dir'])
+                    else:
+                        DATA_DIR = config['data-dir']
                 if 'local-data-path' in config:
-                    LOCAL_DATA_PATH = config['local-data-path']
+                    if ENV == 'fc':
+                        LOCAL_DATA_PATH = os.path.join(BASE_DIR_FC_ENV, config['local-data-path'])
+                    else:
+                        LOCAL_DATA_PATH = config['local-data-path']
                 if 'distance-matrix-path' in config:
-                    DISTANCE_MATRIX_PATH = config['distance-matrix-path']
+                    if ENV == 'fc':
+                        DISTANCE_MATRIX_PATH = os.path.join(BASE_DIR_FC_ENV, config['distance-matrix-path'])
+                    else:
+                        DISTANCE_MATRIX_PATH = config['distance-matrix-path']
                 if 'confounding-meta-path' in config:
-                    CONFOUNDING_META_PATH = config['confounding-meta-path']
+                    if ENV == 'fc':
+                        CONFOUNDING_META_PATH = os.path.join(BASE_DIR_FC_ENV, config['confounding-meta-path'])
+                    else:
+                        CONFOUNDING_META_PATH = config['confounding-meta-path']
                 if 'confounding-data-path' in config:
-                    CONFOUNDING_DATA_PATH = config['confounding-data-path']
+                    if ENV == 'fc':
+                        CONFOUNDING_DATA_PATH = os.path.join(BASE_DIR_FC_ENV, config['confounding-data-path'])
+                    else:
+                        CONFOUNDING_DATA_PATH = config['confounding-data-path']
                 if 'variance-explained-path' in config:
-                    VARIANCE_EXPLAINED_PATH = config['variance-explained-path']
+                    if ENV == 'fc':
+                        VARIANCE_EXPLAINED_PATH = os.path.join(BASE_DIR_FC_ENV, config['variance-explained-path'])
+                    else:
+                        VARIANCE_EXPLAINED_PATH = config['variance-explained-path']
                 if 'k-values-clustering-result-dir' in config:
-                    K_VALUES_CLUSTERING_RESULT_DIR = config['k-values-clustering-result-dir']
+                    if ENV == 'fc':
+                        K_VALUES_CLUSTERING_RESULT_DIR = os.path.join(BASE_DIR_FC_ENV, config['k-values-clustering-result-dir'])
+                    else:
+                        K_VALUES_CLUSTERING_RESULT_DIR = config['k-values-clustering-result-dir']
                 if 'k-values-clustering-file-name' in config:
-                    K_VALUES_CLUSTERING_FILE_NAME = config['k-values-clustering-file-name']
+                    if ENV == 'fc':
+                        K_VALUES_CLUSTERING_FILE_NAME = os.path.join(BASE_DIR_FC_ENV, config['k-values-clustering-file-name'])
+                    else:
+                        K_VALUES_CLUSTERING_FILE_NAME = config['k-values-clustering-file-name']
                 if 'k-values-silhouette-file-name' in config:
-                    K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
+                    if ENV == 'fc':
+                        K_VALUES_SILHOUETTE_FILE_NAME = os.path.join(BASE_DIR_FC_ENV, config['k-values-silhouette-file-name'])
+                    else:
+                        K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
                 if 'download-dir' in config:
-                    DOWNLOAD_DIR = config['download-dir']
+                    if ENV == 'fc':
+                        DOWNLOAD_DIR = os.path.join(BASE_DIR_FC_ENV, config['download-dir'])
+                    else:
+                        DOWNLOAD_DIR = config['download-dir']
     except IOError:
         print('No config file found, will work with default values.')
+
+    print("Working with the following config data:")
+    print(f'DATA-DIR={DATA_DIR}')
+    print(f'LOCAL_DATA_PATH={LOCAL_DATA_PATH}')
+    print(f'DISTANCE_MATRIX_PATH={DISTANCE_MATRIX_PATH}')
+    print(f'CONFOUNDING_META_PATH={CONFOUNDING_META_PATH}')
+    print(f'CONFOUNDING_DATA_PATH={CONFOUNDING_DATA_PATH}')
+    print(f'VARIANCE_EXPLAINED_PATH={VARIANCE_EXPLAINED_PATH}')
+    print(f'K_VALUES_CLUSTERING_RESULT_DIR={K_VALUES_CLUSTERING_RESULT_DIR}')
+    print(f'K_VALUES_CLUSTERING_FILE_NAME={K_VALUES_CLUSTERING_FILE_NAME}')
+    print(f'K_VALUES_SILHOUETTE_FILE_NAME={K_VALUES_SILHOUETTE_FILE_NAME}')
+    print(f'DOWNLOAD_DIR={DOWNLOAD_DIR}')
+
 
 def assemble_dataframes():
     global DISTANCE_DF, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, \
@@ -123,6 +167,8 @@ def assemble_dataframes():
         base_df = pd.read_csv(LOCAL_DATA_PATH, delimiter=DELIMITER, skiprows=0)
         nr_of_samples = len(base_df.index)
     except IOError:
+        print(f'Current directory is: {os.getcwd()}')
+        print(f'Did not find local data file in: {LOCAL_DATA_PATH}')
         DATA_ERRORS += "Local data is missing"
         return
 

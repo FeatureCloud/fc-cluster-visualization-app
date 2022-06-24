@@ -63,6 +63,11 @@ def setup(env):
 
     DATA_DIR = "./data"
     OUTPUT_DIR = f'{DATA_DIR}/output'
+
+    if ENV == 'fc':
+        DATA_DIR = '/mnt/input'
+        OUTPUT_DIR = '/mnt/output'
+
     LOCAL_DATA_PATH = f'{DATA_DIR}/localData.csv'
     DISTANCE_MATRIX_PATH = f'{DATA_DIR}/distanceMatrix.csv'
     CONFOUNDING_META_PATH = f'{DATA_DIR}/confoundingData.meta'
@@ -74,8 +79,6 @@ def setup(env):
     DOWNLOAD_DIR = f'{OUTPUT_DIR}/downloads'
 
     if ENV == 'fc':
-        DATA_DIR = '/mnt/input'
-        OUTPUT_DIR = '/mnt/output'
         # copy input folder content to output folder
         shutil.copytree(DATA_DIR, OUTPUT_DIR, dirs_exist_ok=True)
 

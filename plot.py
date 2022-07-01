@@ -1,3 +1,4 @@
+import base64
 import os
 import shutil
 
@@ -7,6 +8,7 @@ from dash import Dash, dcc, html
 import dash_bootstrap_components as dbc
 import dash_daq as daq
 from dash.dash_table import DataTable
+from dash.dcc import Download
 from dash.dependencies import Input, Output, ALL, State
 import plotly.graph_objects as go
 import pandas as pd
@@ -123,26 +125,22 @@ def setup(env):
                         VARIANCE_EXPLAINED_PATH = config['variance-explained-path']
                 if 'k-values-clustering-result-dir' in config:
                     if ENV == 'fc':
-                        K_VALUES_CLUSTERING_RESULT_DIR = os.path.join(BASE_DIR_FC_ENV, config['k-values-clustering-result-dir'])
+                        K_VALUES_CLUSTERING_RESULT_DIR = os.path.join(BASE_DIR_FC_ENV,
+                                                                      config['k-values-clustering-result-dir'])
                     else:
                         K_VALUES_CLUSTERING_RESULT_DIR = config['k-values-clustering-result-dir']
-                if 'k-values-clustering-file-name' in config:
-                    if ENV == 'fc':
-                        K_VALUES_CLUSTERING_FILE_NAME = os.path.join(BASE_DIR_FC_ENV, config['k-values-clustering-file-name'])
-                    else:
-                        K_VALUES_CLUSTERING_FILE_NAME = config['k-values-clustering-file-name']
-                if 'k-values-silhouette-file-name' in config:
-                    if ENV == 'fc':
-                        K_VALUES_SILHOUETTE_FILE_NAME = os.path.join(BASE_DIR_FC_ENV, config['k-values-silhouette-file-name'])
-                    else:
-                        K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
+                K_VALUES_CLUSTERING_FILE_NAME = config['k-values-clustering-file-name']
+                K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
                 if 'download-dir' in config:
                     if ENV == 'fc':
-                        DOWNLOAD_DIR = os.path.join(BASE_DIR_FC_ENV, config['download-dir'])
+                        DOWNLOAD_DIR = os.path.join(OUTPUT_DIR, config['download-dir'])
                     else:
                         DOWNLOAD_DIR = config['download-dir']
     except IOError:
         print('No config file found, will work with default values.')
+
+    if not os.path.isdir(DOWNLOAD_DIR):
+        os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
     print("Working with the following config data:")
     print(f'DATA-DIR={DATA_DIR}')
@@ -219,7 +217,8 @@ def assemble_dataframes():
         for dir_name in [f.name for f in os.scandir(K_VALUES_CLUSTERING_RESULT_DIR) if f.is_dir()]:
             cluster_nr = int(dir_name.split('_')[1])
             K_VALUES.append(cluster_nr)
-            cluster_data = pd.read_csv(f'{K_VALUES_CLUSTERING_RESULT_DIR}/{dir_name}/{K_VALUES_CLUSTERING_FILE_NAME}', delimiter=DELIMITER, skiprows=0)
+            cluster_data = pd.read_csv(f'{K_VALUES_CLUSTERING_RESULT_DIR}/{dir_name}/{K_VALUES_CLUSTERING_FILE_NAME}',
+                                       delimiter=DELIMITER, skiprows=0)
             df = pd.merge(base_df, cluster_data, on="id")
 
             # put cluster column in different place to be used in hovertemplate, based on customdata parameter
@@ -242,7 +241,8 @@ def assemble_dataframes():
             DF_SILHOUETTE.append(
                 {
                     'k': cluster_nr,
-                    'df': pd.read_csv(f'{K_VALUES_CLUSTERING_RESULT_DIR}/{dir_name}/{K_VALUES_SILHOUETTE_FILE_NAME}', delimiter=DELIMITER).sort_values(
+                    'df': pd.read_csv(f'{K_VALUES_CLUSTERING_RESULT_DIR}/{dir_name}/{K_VALUES_SILHOUETTE_FILE_NAME}',
+                                      delimiter=DELIMITER).sort_values(
                         ["cluster", "y"], ascending=(True, False)).reset_index(),
                 }
             )
@@ -256,6 +256,7 @@ def assemble_dataframes():
             }
         )
         DATA_ERRORS += "Error: Clustering information is missing or corrupt.\n"
+
 
 def create_dash(path_prefix):
     app = Dash(__name__,
@@ -281,7 +282,7 @@ def create_dash(path_prefix):
                 justify='center'
             )
         ],
-        className='help-ct')
+            className='help-ct')
     else:
         distance_style = {'display': 'none'} if len(DISTANCE_DF) == 0 else {}
         scree_plot_style = {'display': 'none'} if len(DF_SCREE_PLOT) == 0 else {}
@@ -355,7 +356,6 @@ def create_dash(path_prefix):
             return True
         return False
 
-
     def render_confounders():
         confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
         datatable_columns = confounding_df.columns.to_list()
@@ -427,9 +427,8 @@ def create_dash(path_prefix):
                     ),
                 )
             ),
-            dbc.Row(
-                dcc.Graph(id='confounders-scatter', className='confounders-scatter'),
-            ),
+            get_download_button(),
+            dbc.Row(dcc.Graph(id='confounders-scatter', className='confounders-scatter')),
             dbc.Row(
                 dbc.Fade(
                     html.Div([
@@ -520,6 +519,9 @@ def create_dash(path_prefix):
                                                              range_values, use_clusters)
         confounding_df = confounding_df[confounding_df.index.isin(index_list)]
         fig = get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts, clustering_field)
+
+        save_fig_as_image(fig)
+
         return fig, cluster_checklist_values, selected_clusters
 
     def get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts, clustering_field):
@@ -677,7 +679,16 @@ def create_dash(path_prefix):
                 )
             ]
         )
+        fig.update_layout(modebar_remove=['toImage'])
         return fig
+
+    @app.callback(
+        Output("download-plot", "data"),
+        [Input("btn-download-plot", "n_clicks")]
+    )
+    def download_image(n_clicks):
+        if (n_clicks is not None and n_clicks > 0):
+            return dcc.send_file(os.path.join(DOWNLOAD_DIR, 'plot.png'))
 
     @app.callback(
         Output("selection-datatable", "data"),
@@ -730,8 +741,6 @@ def create_dash(path_prefix):
                 group_name = default_file_name
 
         # Save data in file system as well
-        if not os.path.isdir(DOWNLOAD_DIR):
-            os.makedirs(DOWNLOAD_DIR, exist_ok=True)
         df.to_csv(os.path.join(DOWNLOAD_DIR, f'{group_name}.csv'))
 
         return dcc.send_data_frame(df.to_csv, f'{group_name}.csv')
@@ -772,15 +781,19 @@ def create_dash(path_prefix):
             HEATMAP_INDEX_LIST = index_list
 
         df = DISTANCE_DF[DISTANCE_DF.index.isin(index_list)]
-        return dash_bio.Clustergram(
+        fig = dash_bio.Clustergram(
             data=df,
             column_labels=list(df.columns.values),
             row_labels=list(df.index),
             height=800,
             width=1400,
-            # display_ratio=[0.1, 0.7],
             hidden_labels='rows, columns'
-        ), cluster_checklist_values, selected_clusters, display_error_toaster
+        )
+        fig.update_layout(modebar_remove=['toImage'])
+
+        save_fig_as_image(fig)
+
+        return fig, cluster_checklist_values, selected_clusters, display_error_toaster
 
     @app.callback(
         Output('cluster_quality_graph', 'figure'),
@@ -830,9 +843,29 @@ def create_dash(path_prefix):
                 "title": "Clusters",
             },
         )
+        fig.update_layout(modebar_remove=['toImage'])
+
+        save_fig_as_image(fig)
+
         return fig
 
     return app
+
+
+def get_download_button():
+    return dbc.Row(
+        html.Div(
+            [dbc.Button("Download plot as image", id="btn-download-plot", size='sm'), Download(id="download-plot")],
+            style={'width': '200px', 'float': 'right'}
+        )
+    )
+
+
+def save_fig_as_image(fig):
+    # Save image to download folder to be available for download
+    filepath = os.path.join(DOWNLOAD_DIR, 'plot.png')
+    with open(filepath, "wb") as fp:
+        fp.write(fig.to_image(width=1920, height=1080))
 
 
 def render_distances():
@@ -853,6 +886,7 @@ def render_distances():
                     )
                 )
             ),
+            get_download_button(),
             dbc.Row(
                 dbc.Col(dcc.Graph(id="distance_graph"))
             ),
@@ -917,6 +951,7 @@ def render_clustering_quality():
                 style={'height': '60px', 'width': '100px', 'margin': '20px 70px'}
             ),
         ]),
+        get_download_button(),
         dbc.Row([
             dcc.Graph(id="cluster_quality_graph"),
         ])
@@ -940,11 +975,19 @@ def render_scree_plot():
         yaxis_title="Eigenvalue",
 
     )
+
+    fig.update_layout(modebar_remove=['toImage'])
+    save_fig_as_image(fig)
+
     return html.Div([
-        dcc.Graph(
-            id='scree-plot',
-            figure=fig
-        )])
+        get_download_button(),
+        dbc.Row(
+            dcc.Graph(
+                id='scree-plot',
+                figure=fig
+            )
+        )],
+        style={'margin-top': '25px'})
 
 
 def render_help():
@@ -1194,4 +1237,3 @@ def start(env, path_prefix):
         dash.run_server(debug=True, port=8050)
         # process = multiprocessing.Process(target=run_native)
         # process.start()
-

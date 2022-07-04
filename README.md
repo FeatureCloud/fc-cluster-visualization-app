@@ -67,7 +67,8 @@ data
 For a better understanding an example data set can be downloaded by clicking [here](./assets/data.zip).
 
 #### Tip for running
-When running the app in a workflow, one can upload a zip file containing the config file and data files. It will be automatically unzipped and copied to the input directory of the app. To test this, just upload the example data set mentioned above. 
+When running the app in a workflow, one can upload a zip file containing the config file and data files. It will be automatically unzipped and copied to the input directory of the app. To test this, just upload the example data set mentioned above.
+When running the app in a workflow, one can trigger the app to finish, by clicking the Finished button in the top right corner. This makes possible starting the next app in the workflow, if any, or stopping the workflow.
 
 Notes:
 - localData.csv file is mandatory. The rest of files are optional.

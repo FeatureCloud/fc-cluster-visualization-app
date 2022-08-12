@@ -269,12 +269,16 @@ def assemble_dataframes():
         DATA_ERRORS += "Error: Clustering information is missing or corrupt.\n"
 
     try:
-        # VOLCANO_DF = pd.read_csv(VOLCANO_DATA_PATH, delimiter=DELIMITER, skiprows=0)
-        VOLCANO_DF = pd.read_csv('exampleData/results.csv', sep="\t")
+        VOLCANO_DF = pd.read_csv(VOLCANO_DATA_PATH, delimiter=DELIMITER, skiprows=0)
+        if 'EFFECTSIZE' not in VOLCANO_DF.columns or 'P' not in VOLCANO_DF.columns or 'SNP' not in VOLCANO_DF.columns\
+                or 'GENE' not in VOLCANO_DF.columns:
+            DATA_ERRORS += f'Error: Wrong delimiter ({DELIMITER}) or missing column(s) in data set for volcano plot. ' \
+                           f'Required columns are: "EFFECTSIZE", "P", "SNP", "GENE".\n'
     except IOError:
         DATA_ERRORS += f'Warning: {VOLCANO_DATA_PATH} does not exist.\n'
     except pd.errors.EmptyDataError:
         DATA_ERRORS += f'Error: {VOLCANO_DATA_PATH} is empty.\n'
+
 
 def create_dash(path_prefix):
     app = Dash(__name__,
@@ -1028,14 +1032,6 @@ def render_scree_plot():
 
 
 def render_volcano_plot():
-    global VOLCANO_DF
-
-    # Original data
-    VOLCANO_DF["EFFECTSIZE"] = VOLCANO_DF["logFC"]
-    VOLCANO_DF['P'] = VOLCANO_DF['adj.P.Val']
-    VOLCANO_DF['SNP'] = None  # df.index.values
-    VOLCANO_DF.rename(columns={'Unnamed: 0': 'GENE'}, inplace=True)
-
     min_effect = math.floor(VOLCANO_DF['EFFECTSIZE'].min())
     max_effect = math.ceil(VOLCANO_DF['EFFECTSIZE'].max())
     min_effect_value = math.floor(min_effect + 0.3*(max_effect-min_effect))

@@ -874,9 +874,10 @@ def create_dash(path_prefix):
     @app.callback(
         Output('dashbio-default-volcanoplot', 'figure'),
         Input('effect-size-input', 'value'),
-        Input('genome-wide-line-input', 'value')
+        Input('genome-wide-line-input-button', 'n_clicks'),
+        State('genome-wide-line-input', 'value')
     )
-    def update_volcanoplot(effects, genomewideline):
+    def update_volcanoplot(effects, n_clicks, genomewideline):
         fig = dash_bio.VolcanoPlot(
             dataframe=VOLCANO_DF,
             genomewideline_value=genomewideline,
@@ -1055,7 +1056,7 @@ def render_volcano_plot():
     return html.Div([
         get_download_button(),
         dbc.Row(children=[
-            'Effect sizes',
+            dbc.Label('Effect sizes'),
             dcc.RangeSlider(
                 id='effect-size-input',
                 min=min_effect,
@@ -1063,17 +1064,32 @@ def render_volcano_plot():
                 step=0.05,
                 marks={i: {'label': str(i)} for i in range(min_effect, max_effect)},
                 value=[min_effect_value, max_effect_value]
+            )],
+        ),
+        dbc.Row(
+            dbc.Col(
+                dbc.Label("Threshold"),
             ),
-        ]),
+        ),
         dbc.Row(children=[
-            'Threshold',
-            dcc.Slider(
-                id='genome-wide-line-input',
-                min=min_genome_wide_line,
-                max=max_genome_wide_line,
-                step=0.05,
-                marks={i: {'label': str(i)} for i in range(min_genome_wide_line, max_genome_wide_line)},
-                value=genome_wide_line_value
+            html.Span(
+                dbc.Input(
+                    id='genome-wide-line-input',
+                    type='number',
+                    min=min_genome_wide_line,
+                    max=max_genome_wide_line,
+                    value=genome_wide_line_value,
+                    style={"width": 75},
+                ),
+                style={"width": 80, 'float': 'left'},
+            ),
+            html.Span(
+                dbc.Button(
+                    "Set",
+                    id='genome-wide-line-input-button',
+                    n_clicks=0,
+                ),
+                style={"width": 80, 'float': 'left'},
             ),
         ]),
         dbc.Row(

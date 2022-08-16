@@ -136,8 +136,10 @@ def setup(env):
                                                                       config['k-values-clustering-result-dir'])
                     else:
                         K_VALUES_CLUSTERING_RESULT_DIR = config['k-values-clustering-result-dir']
-                K_VALUES_CLUSTERING_FILE_NAME = config['k-values-clustering-file-name']
-                K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
+                if 'k-values-clustering-file-name' in config:
+                    K_VALUES_CLUSTERING_FILE_NAME = config['k-values-clustering-file-name']
+                if 'k-values-silhouette-file-name' in config:
+                    K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
                 if 'volcano-data-path' in config:
                     VOLCANO_DATA_PATH = config['volcano-data-path']
                 if 'download-dir' in config:
@@ -182,6 +184,19 @@ def assemble_dataframes():
         print(f'Current directory is: {os.getcwd()}')
         print(f'Did not find local data file in: {LOCAL_DATA_PATH}')
         DATA_ERRORS += "Local data is missing"
+
+    try:
+        VOLCANO_DF = pd.read_csv(VOLCANO_DATA_PATH, delimiter=DELIMITER, skiprows=0)
+        if 'EFFECTSIZE' not in VOLCANO_DF.columns or 'P' not in VOLCANO_DF.columns or 'SNP' not in VOLCANO_DF.columns\
+                or 'GENE' not in VOLCANO_DF.columns:
+            DATA_ERRORS += f'Error: Wrong delimiter ({DELIMITER}) or missing column(s) in data set for volcano plot. ' \
+                           f'Required columns are: "EFFECTSIZE", "P", "SNP", "GENE".\n'
+    except IOError:
+        DATA_ERRORS += f'Warning: {VOLCANO_DATA_PATH} does not exist.\n'
+    except pd.errors.EmptyDataError:
+        DATA_ERRORS += f'Error: {VOLCANO_DATA_PATH} is empty.\n'
+
+    if len(DATAFRAMES_BY_K_VALUE) == 0:
         return
 
     try:
@@ -268,24 +283,13 @@ def assemble_dataframes():
         )
         DATA_ERRORS += "Error: Clustering information is missing or corrupt.\n"
 
-    try:
-        VOLCANO_DF = pd.read_csv(VOLCANO_DATA_PATH, delimiter=DELIMITER, skiprows=0)
-        if 'EFFECTSIZE' not in VOLCANO_DF.columns or 'P' not in VOLCANO_DF.columns or 'SNP' not in VOLCANO_DF.columns\
-                or 'GENE' not in VOLCANO_DF.columns:
-            DATA_ERRORS += f'Error: Wrong delimiter ({DELIMITER}) or missing column(s) in data set for volcano plot. ' \
-                           f'Required columns are: "EFFECTSIZE", "P", "SNP", "GENE".\n'
-    except IOError:
-        DATA_ERRORS += f'Warning: {VOLCANO_DATA_PATH} does not exist.\n'
-    except pd.errors.EmptyDataError:
-        DATA_ERRORS += f'Error: {VOLCANO_DATA_PATH} is empty.\n'
-
 
 def create_dash(path_prefix):
     app = Dash(__name__,
                requests_pathname_prefix=path_prefix,
                title='FeatureCloud Cluster Visualization App',
                suppress_callback_exceptions=True)
-    if len(DATAFRAMES_BY_K_VALUE) == 0:
+    if len(DATAFRAMES_BY_K_VALUE) == 0 and len(VOLCANO_DF) == 0:
         f = open('README.md', 'r')
         app.layout = html.Div([
             dbc.Row(
@@ -306,11 +310,13 @@ def create_dash(path_prefix):
         ],
             className='help-ct')
     else:
+        confounding_style = {'display': 'none'} if len(DATAFRAMES_BY_K_VALUE) == 0 else {}
         distance_style = {'display': 'none'} if len(DISTANCE_DF) == 0 else {}
         scree_plot_style = {'display': 'none'} if len(DF_SCREE_PLOT) == 0 else {}
         cluster_quality_style = {'display': 'none'} if len(K_VALUES) <= 1 else {}
         volcano_plot_style = {'display': 'none'} if len(VOLCANO_DF) <= 1 else {}
         finished_button_style = {'display': 'none'} if ENV != 'fc' else {'float': 'right'}
+        tab_value = 'tab-confounders' if len(DATAFRAMES_BY_K_VALUE) > 0 else 'tab-volcano-plot'
 
         app.layout = html.Div([
             html.H2('FeatureCloud Cluster Visualization App', className='fc-header'),
@@ -324,8 +330,8 @@ def create_dash(path_prefix):
                 is_open=False,
                 style={"position": "fixed", "top": 66, "right": 10, "width": 350},
             ),
-            dcc.Tabs(id="tabs-ct", value='tab-confounders', children=[
-                dcc.Tab(label='Confounders', value='tab-confounders'),
+            dcc.Tabs(id="tabs-ct", value=tab_value, children=[
+                dcc.Tab(label='Confounders', value='tab-confounders', style=confounding_style),
                 dcc.Tab(label='Distances', value='tab-distances', style=distance_style),
                 dcc.Tab(label='Clustering Quality', value='tab-clustering-quality', style=cluster_quality_style),
                 dcc.Tab(label='Scree plot', value='tab-scree-plot', style=scree_plot_style),

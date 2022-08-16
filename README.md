@@ -143,7 +143,7 @@ This file contains distances between samples. It is of n x n dimension, where n 
 4;0.648074069840786;0.331662479035541;0.244948974278318;0;0.648074069840786
 5;0.141421356237309;0.608276253029822;0.509901951359278;0.648074069840786;0
 ```
-#### varianceExplained.csv <a name="variance-explained"></a>
+#### varianceExplained.csv
 This file contains the eigenvalues for components.
 Columns:
 - component: mandatory field, it contains the name of the component

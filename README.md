@@ -9,6 +9,7 @@ The app has a tabular interface consisting of:
 - Distances
 - Clustering Quality
 - Scree plot
+- Volcano plot  
 - Help
 ### Confounders tab
 Main features:
@@ -38,6 +39,10 @@ Main features:
 ### Scree plot tab
 Main features:
 - Display components' eigenvalue
+### Volcano plot tab
+Main features:
+- Set effect sizes thresholds (vertical)
+- Set genome wide line threshold (horizontal)
 ### Help
 It displays this documentation.
 
@@ -61,6 +66,7 @@ data
 │   localData.csv
 │   distanceMatrix.csv
 │   varianceExplained.csv
+|   volcano_data.csv
 ```
 
 #### Download
@@ -74,7 +80,7 @@ Notes:
 - localData.csv file is mandatory. The rest of files are optional.
 - All files under K<n> folders (if the folder exists) are mandatory 
 ### Delimiter
-The delimiter used in all files is the ";" character
+The default delimiter is the ";" character. It can be overwritten in the config.yml file.
 ### Expected file structure
 
 #### confoundingData.csv
@@ -137,7 +143,7 @@ This file contains distances between samples. It is of n x n dimension, where n 
 4;0.648074069840786;0.331662479035541;0.244948974278318;0;0.648074069840786
 5;0.141421356237309;0.608276253029822;0.509901951359278;0.648074069840786;0
 ```
-#### varianceExplained.csv <a name="variance-explained"></a>
+#### varianceExplained.csv
 This file contains the eigenvalues for components.
 Columns:
 - component: mandatory field, it contains the name of the component
@@ -178,6 +184,16 @@ x;y;cluster
 4;0.205028521828353;1
 5;0.915254552382976;1
 ```
+#### volcano_data.csv
+This file contains data used to display the volcano plot.
+The columns are the default columns used in [Dash Bio Volcano plot library](https://dash.plotly.com/dash-bio/volcanoplot).
+##### Example
+```csv
+CHR;BP;P;SNP;ZSCORE;EFFECTSIZE;GENE;DISTANCE
+1;937641;0.335343792801723;rs9697358;0.9634;-0.0946;ISG15;1068
+1;1136887;0.245857131900266;rs34945898;1.1605;-0.0947;TNFRSF4;0
+1;2116240;0.823285880265757;rs12034613;0.2233;-0.0741;FP7162;0
+```
 ### General requirements for input data
 - the number of samples has to be the same in all files
 - the sample ids must be persistent
@@ -187,6 +203,7 @@ The app supports setting all data file and directory paths from config file. The
 Example:
 ```yml
 fc-cluster-visualization-app:
+  delimiter: ';'
   data-dir: 'data/exampleData'
   local-data-path: 'data/exampleData/localData.csv'
   distance-matrix-path: 'data/exampleData/distanceMatrix.csv'
@@ -196,6 +213,7 @@ fc-cluster-visualization-app:
   k-values-clustering-result-dir: 'data/exampleData/results'
   k-values-clustering-file-name: 'clustering.csv'
   k-values-silhouette-file-name: 'silhouette.csv'
+  volcano-data-path: 'exampleData/volcano_data.csv'
   # all files downloaded from the browser will end up here too
   download-dir: 'data/exampleData/downloads'
 ```
@@ -232,5 +250,7 @@ Silhouette diagram
 ### Scree plot
 ![Scree plot tab](./assets/scree-plot.png)
 
+### Volcano plot
+![Volcano plot tab](./assets/volcano-plot.png)
 
 

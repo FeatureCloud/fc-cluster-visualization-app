@@ -1,4 +1,5 @@
 import base64
+import math
 import os
 import shutil
 
@@ -25,7 +26,7 @@ DF_SCREE_PLOT = []
 K_VALUES = []
 DATAFRAMES_BY_K_VALUE = []
 DF_SILHOUETTE = []
-DELIMITER = ';'
+DELIMITER = ''
 BASE_DIR_FC_ENV = '/mnt/input'
 DATA_DIR = ''
 OUTPUT_DIR = ''
@@ -34,6 +35,7 @@ K_VALUE_DISTANCE = 0
 HEATMAP_INDEX_LIST = []
 MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY = 5
 DATA_ERRORS = ''
+VOLCANO_DF = []
 
 # Configurable paths for data files
 LOCAL_DATA_PATH = ''
@@ -44,6 +46,7 @@ VARIANCE_EXPLAINED_PATH = ''
 K_VALUES_CLUSTERING_RESULT_DIR = ''
 K_VALUES_CLUSTERING_FILE_NAME = ''
 K_VALUES_SILHOUETTE_FILE_NAME = ''
+VOLCANO_DATA_PATH = ''
 DOWNLOAD_DIR = ''
 
 ENV = ''
@@ -57,9 +60,9 @@ styles = {
 
 
 def setup(env):
-    global DATA_DIR, OUTPUT_DIR, LOCAL_DATA_PATH, CONFOUNDING_DATA_PATH, CONFOUNDING_META_PATH, \
+    global DELIMITER, DATA_DIR, OUTPUT_DIR, LOCAL_DATA_PATH, CONFOUNDING_DATA_PATH, CONFOUNDING_META_PATH, \
         DISTANCE_MATRIX_PATH, VARIANCE_EXPLAINED_PATH, K_VALUES_CLUSTERING_RESULT_DIR, K_VALUES_CLUSTERING_FILE_NAME, \
-        K_VALUES_SILHOUETTE_FILE_NAME, DOWNLOAD_DIR, ENV, BASE_DIR_FC_ENV
+        K_VALUES_SILHOUETTE_FILE_NAME, DOWNLOAD_DIR, ENV, BASE_DIR_FC_ENV, VOLCANO_DATA_PATH
 
     ENV = env
 
@@ -70,6 +73,7 @@ def setup(env):
         DATA_DIR = '/mnt/input'
         OUTPUT_DIR = '/mnt/output'
 
+    DELIMITER = ';'
     LOCAL_DATA_PATH = f'{DATA_DIR}/localData.csv'
     DISTANCE_MATRIX_PATH = f'{DATA_DIR}/distanceMatrix.csv'
     CONFOUNDING_META_PATH = f'{DATA_DIR}/confoundingData.meta'
@@ -78,6 +82,7 @@ def setup(env):
     K_VALUES_CLUSTERING_RESULT_DIR = f'{DATA_DIR}/results'
     K_VALUES_CLUSTERING_FILE_NAME = 'clustering.csv'
     K_VALUES_SILHOUETTE_FILE_NAME = 'silhouette.csv'
+    VOLCANO_DATA_PATH =  f'{DATA_DIR}/volcano.csv'
     DOWNLOAD_DIR = f'{OUTPUT_DIR}/downloads'
 
     if ENV == 'fc':
@@ -93,6 +98,8 @@ def setup(env):
             config = yaml.load(f, Loader=yaml.FullLoader)
             if 'fc-cluster-visualization-app' in config:
                 config = config['fc-cluster-visualization-app']
+                if 'delimiter' in config:
+                    DELIMITER = config['delimiter']
                 if 'data-dir' in config:
                     if ENV == 'fc':
                         DATA_DIR = os.path.join(BASE_DIR_FC_ENV, config['data-dir'])
@@ -129,8 +136,12 @@ def setup(env):
                                                                       config['k-values-clustering-result-dir'])
                     else:
                         K_VALUES_CLUSTERING_RESULT_DIR = config['k-values-clustering-result-dir']
-                K_VALUES_CLUSTERING_FILE_NAME = config['k-values-clustering-file-name']
-                K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
+                if 'k-values-clustering-file-name' in config:
+                    K_VALUES_CLUSTERING_FILE_NAME = config['k-values-clustering-file-name']
+                if 'k-values-silhouette-file-name' in config:
+                    K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
+                if 'volcano-data-path' in config:
+                    VOLCANO_DATA_PATH = config['volcano-data-path']
                 if 'download-dir' in config:
                     if ENV == 'fc':
                         DOWNLOAD_DIR = os.path.join(OUTPUT_DIR, config['download-dir'])
@@ -143,6 +154,7 @@ def setup(env):
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
     print("Working with the following config data:")
+    print(f'DELMITIER={DELIMITER}')
     print(f'DATA-DIR={DATA_DIR}')
     print(f'LOCAL_DATA_PATH={LOCAL_DATA_PATH}')
     print(f'DISTANCE_MATRIX_PATH={DISTANCE_MATRIX_PATH}')
@@ -152,6 +164,7 @@ def setup(env):
     print(f'K_VALUES_CLUSTERING_RESULT_DIR={K_VALUES_CLUSTERING_RESULT_DIR}')
     print(f'K_VALUES_CLUSTERING_FILE_NAME={K_VALUES_CLUSTERING_FILE_NAME}')
     print(f'K_VALUES_SILHOUETTE_FILE_NAME={K_VALUES_SILHOUETTE_FILE_NAME}')
+    print(f'VOLCANO_DATA_PATH={VOLCANO_DATA_PATH}')
     print(f'DOWNLOAD_DIR={DOWNLOAD_DIR}')
 
 
@@ -159,7 +172,7 @@ def assemble_dataframes():
     global DISTANCE_DF, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, \
         K_VALUES, DATA_COLUMNS, DATA_ERRORS, LOCAL_DATA_PATH, DISTANCE_MATRIX_PATH, CONFOUNDING_META_PATH, \
         CONFOUNDING_DATA_PATH, VARIANCE_EXPLAINED_PATH, K_VALUES_CLUSTERING_RESULT_DIR, K_VALUES_CLUSTERING_FILE_NAME, \
-        K_VALUES_SILHOUETTE_FILE_NAME
+        K_VALUES_SILHOUETTE_FILE_NAME, VOLCANO_DF
     DATAFRAMES_BY_K_VALUE = []
     if not os.path.isdir(DATA_DIR):
         DATA_ERRORS += "Data folder is missing."
@@ -171,6 +184,19 @@ def assemble_dataframes():
         print(f'Current directory is: {os.getcwd()}')
         print(f'Did not find local data file in: {LOCAL_DATA_PATH}')
         DATA_ERRORS += "Local data is missing"
+
+    try:
+        VOLCANO_DF = pd.read_csv(VOLCANO_DATA_PATH, delimiter=DELIMITER, skiprows=0)
+        if 'EFFECTSIZE' not in VOLCANO_DF.columns or 'P' not in VOLCANO_DF.columns or 'SNP' not in VOLCANO_DF.columns\
+                or 'GENE' not in VOLCANO_DF.columns:
+            DATA_ERRORS += f'Error: Wrong delimiter ({DELIMITER}) or missing column(s) in data set for volcano plot. ' \
+                           f'Required columns are: "EFFECTSIZE", "P", "SNP", "GENE".\n'
+    except IOError:
+        DATA_ERRORS += f'Warning: {VOLCANO_DATA_PATH} does not exist.\n'
+    except pd.errors.EmptyDataError:
+        DATA_ERRORS += f'Error: {VOLCANO_DATA_PATH} is empty.\n'
+
+    if len(DATAFRAMES_BY_K_VALUE) == 0:
         return
 
     try:
@@ -263,7 +289,7 @@ def create_dash(path_prefix):
                requests_pathname_prefix=path_prefix,
                title='FeatureCloud Cluster Visualization App',
                suppress_callback_exceptions=True)
-    if len(DATAFRAMES_BY_K_VALUE) == 0:
+    if len(DATAFRAMES_BY_K_VALUE) == 0 and len(VOLCANO_DF) == 0:
         f = open('README.md', 'r')
         app.layout = html.Div([
             dbc.Row(
@@ -284,10 +310,13 @@ def create_dash(path_prefix):
         ],
             className='help-ct')
     else:
+        confounding_style = {'display': 'none'} if len(DATAFRAMES_BY_K_VALUE) == 0 else {}
         distance_style = {'display': 'none'} if len(DISTANCE_DF) == 0 else {}
         scree_plot_style = {'display': 'none'} if len(DF_SCREE_PLOT) == 0 else {}
         cluster_quality_style = {'display': 'none'} if len(K_VALUES) <= 1 else {}
+        volcano_plot_style = {'display': 'none'} if len(VOLCANO_DF) <= 1 else {}
         finished_button_style = {'display': 'none'} if ENV != 'fc' else {'float': 'right'}
+        tab_value = 'tab-confounders' if len(DATAFRAMES_BY_K_VALUE) > 0 else 'tab-volcano-plot'
 
         app.layout = html.Div([
             html.H2('FeatureCloud Cluster Visualization App', className='fc-header'),
@@ -301,11 +330,12 @@ def create_dash(path_prefix):
                 is_open=False,
                 style={"position": "fixed", "top": 66, "right": 10, "width": 350},
             ),
-            dcc.Tabs(id="tabs-ct", value='tab-confounders', children=[
-                dcc.Tab(label='Confounders', value='tab-confounders'),
+            dcc.Tabs(id="tabs-ct", value=tab_value, children=[
+                dcc.Tab(label='Confounders', value='tab-confounders', style=confounding_style),
                 dcc.Tab(label='Distances', value='tab-distances', style=distance_style),
                 dcc.Tab(label='Clustering Quality', value='tab-clustering-quality', style=cluster_quality_style),
                 dcc.Tab(label='Scree plot', value='tab-scree-plot', style=scree_plot_style),
+                dcc.Tab(label='Volcano plot', value='tab-volcano-plot', style=volcano_plot_style),
                 dcc.Tab(label='Help', value='tab-help'),
             ]),
             html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'}),
@@ -339,6 +369,8 @@ def create_dash(path_prefix):
             return render_clustering_quality(), show_toast
         elif tab == 'tab-scree-plot':
             return render_scree_plot(), show_toast
+        elif tab == 'tab-volcano-plot':
+            return render_volcano_plot(), show_toast
         elif tab == 'tab-help':
             return render_help(), show_toast
 
@@ -849,6 +881,21 @@ def create_dash(path_prefix):
 
         return fig
 
+    @app.callback(
+        Output('dashbio-default-volcanoplot', 'figure'),
+        Input('effect-size-input', 'value'),
+        Input('genome-wide-line-input-button', 'n_clicks'),
+        State('genome-wide-line-input', 'value')
+    )
+    def update_volcanoplot(effects, n_clicks, genomewideline):
+        fig = dash_bio.VolcanoPlot(
+            dataframe=VOLCANO_DF,
+            genomewideline_value=genomewideline,
+            effect_size_line=effects
+        )
+        save_fig_as_image(fig)
+        return fig
+
     return app
 
 
@@ -988,6 +1035,74 @@ def render_scree_plot():
             )
         )],
         style={'margin-top': '25px'})
+
+
+def render_volcano_plot():
+    min_effect = math.floor(VOLCANO_DF['EFFECTSIZE'].min())
+    max_effect = math.ceil(VOLCANO_DF['EFFECTSIZE'].max())
+    min_effect_value = math.floor(min_effect + 0.3*(max_effect-min_effect))
+    max_effect_value = math.ceil(max_effect - 0.3 * (max_effect - min_effect))
+
+    min_p_value = -math.floor(np.log10(VOLCANO_DF['P'].min()))
+    max_p_value = -math.ceil(np.log10(VOLCANO_DF['P'].max()))
+    min_genome_wide_line = min(min_p_value, max_p_value)
+    max_genome_wide_line = max(min_p_value, max_p_value)
+    genome_wide_line_value = math.floor(min_genome_wide_line + 0.3*(max_genome_wide_line-min_genome_wide_line))
+
+    fig = dash_bio.VolcanoPlot(
+        dataframe=VOLCANO_DF,
+        genomewideline_value=genome_wide_line_value,
+    )
+    save_fig_as_image(fig)
+
+    return html.Div([
+        get_download_button(),
+        dbc.Row(children=[
+            dbc.Label('Effect sizes'),
+            dcc.RangeSlider(
+                id='effect-size-input',
+                min=min_effect,
+                max=max_effect,
+                step=0.05,
+                marks={i: {'label': str(i)} for i in range(min_effect, max_effect)},
+                value=[min_effect_value, max_effect_value]
+            )],
+        ),
+        dbc.Row(
+            dbc.Col(
+                dbc.Label("Threshold"),
+            ),
+        ),
+        dbc.Row(children=[
+            html.Span(
+                dbc.Input(
+                    id='genome-wide-line-input',
+                    type='number',
+                    min=min_genome_wide_line,
+                    max=max_genome_wide_line,
+                    value=genome_wide_line_value,
+                    style={"width": 75},
+                ),
+                style={"width": 80, 'float': 'left'},
+            ),
+            html.Span(
+                dbc.Button(
+                    "Set",
+                    id='genome-wide-line-input-button',
+                    n_clicks=0,
+                ),
+                style={"width": 80, 'float': 'left'},
+            ),
+        ]),
+        dbc.Row(
+            dcc.Graph(
+                id='dashbio-default-volcanoplot',
+                figure=fig
+            )
+        )
+    ],
+        style={'margin-top': '25px'}
+    )
 
 
 def render_help():

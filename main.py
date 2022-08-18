@@ -5,7 +5,7 @@ from FeatureCloud.app.engine.app import app
 from bottle import Bottle
 
 import states
-import plot
+import FeatureCloudVisualization.plot as plot
 
 """
 Normally the app is started within FeatureCloud environment ('fc'),

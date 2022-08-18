@@ -4,8 +4,7 @@ from FeatureCloud.app.api.http_ctrl import api_server
 from FeatureCloud.app.engine.app import app
 from bottle import Bottle
 
-import states
-import FeatureCloudVisualization.plot as plot
+import FeatureCloudVisualization
 
 """
 Normally the app is started within FeatureCloud environment ('fc'),
@@ -28,4 +27,4 @@ if __name__ == '__main__':
     if env == 'fc':
         start_app()
     else:
-        plot.start(env, None)
+        FeatureCloudVisualization.start(env, None)

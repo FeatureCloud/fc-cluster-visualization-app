@@ -2,7 +2,7 @@ import os
 
 from FeatureCloud.app.engine.app import AppState, app_state
 
-import plot
+import FeatureCloudVisualization
 
 
 @app_state('initial')
@@ -15,7 +15,7 @@ class InitialState(AppState):
         path_prefix = os.getenv("PATH_PREFIX")
         print("PATH_PREFIX environment variable: ", path_prefix)
         print('Plot start...')
-        plot.start('fc', path_prefix)
+        FeatureCloudVisualization.start('fc', path_prefix)
         return 'plot'
 
 

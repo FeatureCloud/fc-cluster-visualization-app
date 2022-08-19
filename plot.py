@@ -145,7 +145,6 @@ def setup(env):
                                                                       config['volcano-data-path'])
                     else:
                         VOLCANO_DATA_PATH = config['volcano-data-path']
-                    print(VOLCANO_DATA_PATH)
                 if 'download-dir' in config:
                     if ENV == 'fc':
                         DOWNLOAD_DIR = os.path.join(OUTPUT_DIR, config['download-dir'])
@@ -181,12 +180,14 @@ def assemble_dataframes():
     if not os.path.isdir(DATA_DIR):
         DATA_ERRORS += "Data folder is missing."
 
+    local_data_present = True
     try:
         base_df = pd.read_csv(LOCAL_DATA_PATH, delimiter=DELIMITER, skiprows=0)
         nr_of_samples = len(base_df.index)
     except IOError:
         print(f'Current directory is: {os.getcwd()}')
         print(f'Did not find local data file in: {LOCAL_DATA_PATH}')
+        local_data_present = False
         DATA_ERRORS += "Local data is missing"
 
     try:
@@ -200,7 +201,7 @@ def assemble_dataframes():
     except pd.errors.EmptyDataError:
         DATA_ERRORS += f'Error: {VOLCANO_DATA_PATH} is empty.\n'
 
-    if len(DATAFRAMES_BY_K_VALUE) == 0:
+    if not local_data_present:
         return
 
     try:

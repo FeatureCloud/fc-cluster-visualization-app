@@ -1,4 +1,3 @@
-import base64
 import math
 import os
 import shutil
@@ -82,7 +81,7 @@ def setup(env):
     K_VALUES_CLUSTERING_RESULT_DIR = f'{DATA_DIR}/results'
     K_VALUES_CLUSTERING_FILE_NAME = 'clustering.csv'
     K_VALUES_SILHOUETTE_FILE_NAME = 'silhouette.csv'
-    VOLCANO_DATA_PATH =  f'{DATA_DIR}/volcano.csv'
+    VOLCANO_DATA_PATH = f'{DATA_DIR}/volcano_data.csv'
     DOWNLOAD_DIR = f'{OUTPUT_DIR}/downloads'
 
     if ENV == 'fc':
@@ -141,7 +140,12 @@ def setup(env):
                 if 'k-values-silhouette-file-name' in config:
                     K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
                 if 'volcano-data-path' in config:
-                    VOLCANO_DATA_PATH = config['volcano-data-path']
+                    if ENV == 'fc':
+                        VOLCANO_DATA_PATH = os.path.join(BASE_DIR_FC_ENV,
+                                                                      config['volcano-data-path'])
+                    else:
+                        VOLCANO_DATA_PATH = config['volcano-data-path']
+                    print(VOLCANO_DATA_PATH)
                 if 'download-dir' in config:
                     if ENV == 'fc':
                         DOWNLOAD_DIR = os.path.join(OUTPUT_DIR, config['download-dir'])

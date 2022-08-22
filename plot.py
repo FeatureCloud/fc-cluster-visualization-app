@@ -893,11 +893,14 @@ def create_dash(path_prefix):
         State('genome-wide-line-input', 'value')
     )
     def update_volcanoplot(effects, n_clicks, genomewideline):
+        hover_text = 'SNP:' + VOLCANO_DF['SNP'].astype(str) + '|' + 'GENE:' + VOLCANO_DF['GENE'].astype(str)
         fig = dash_bio.VolcanoPlot(
             dataframe=VOLCANO_DF,
             genomewideline_value=genomewideline,
             effect_size_line=effects
-        )
+        ).update_traces(mode='markers+text', selector=dict(marker_color='red'))\
+            .update_traces(text=hover_text, selector=dict(marker_color='red')) \
+            .update_traces(textposition='top center', selector=dict(marker_color='red'))
         save_fig_as_image(fig)
         return fig
 
@@ -1058,7 +1061,6 @@ def render_volcano_plot():
         dataframe=VOLCANO_DF,
         genomewideline_value=genome_wide_line_value,
     )
-    save_fig_as_image(fig)
 
     return html.Div([
         get_download_button(),

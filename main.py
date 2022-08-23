@@ -6,6 +6,10 @@ from bottle import Bottle
 
 import states
 import plot
+import plotly.io as pio
+
+pio.kaleido.scope.chromium_args = tuple([arg for arg in pio.kaleido.scope.chromium_args if arg != "--disable-dev-shm-usage"])
+
 
 """
 Normally the app is started within FeatureCloud environment ('fc'),

@@ -898,9 +898,10 @@ def create_dash(path_prefix):
             dataframe=VOLCANO_DF,
             genomewideline_value=genomewideline,
             effect_size_line=effects
-        ).update_traces(mode='markers+text', selector=dict(marker_color='red'))\
-            .update_traces(text=hover_text, selector=dict(marker_color='red')) \
-            .update_traces(textposition='top center', selector=dict(marker_color='red'))
+        )
+            # .update_traces(mode='markers+text', selector=dict(marker_color='red'))\
+            # .update_traces(text=hover_text, selector=dict(marker_color='red')) \
+            # .update_traces(textposition='top center', selector=dict(marker_color='red'))
         save_fig_as_image(fig)
         return fig
 

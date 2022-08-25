@@ -325,8 +325,8 @@ def create_dash(path_prefix):
 
         app.layout = html.Div([
             html.H2('FeatureCloud Cluster Visualization App', className='fc-header'),
-            dbc.Button('Finished', id='btn-finished', color='primary', className='me-1',
-                       style=finished_button_style, title='Finished visualization, proceed to next step'),
+            dbc.Button('Finish', id='btn-finished', color='primary', className='me-1',
+                       style=finished_button_style, title='Finished visualization, stop app and proceed to next step if any.'),
             dbc.Toast(
                 [html.P('Visualization finished. Will proceed to next step or finish the workflow.', className="mb-0")],
                 id="toaster-visualization-finished",

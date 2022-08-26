@@ -188,7 +188,6 @@ def assemble_dataframes():
         print(f'Current directory is: {os.getcwd()}')
         print(f'Did not find local data file in: {LOCAL_DATA_PATH}')
         local_data_present = False
-        DATA_ERRORS += "Local data is missing"
 
     try:
         VOLCANO_DF = pd.read_csv(VOLCANO_DATA_PATH, delimiter=DELIMITER, skiprows=0)
@@ -202,6 +201,8 @@ def assemble_dataframes():
         DATA_ERRORS += f'Error: {VOLCANO_DATA_PATH} is empty.\n'
 
     if not local_data_present:
+        if len(VOLCANO_DF) == 0:
+            DATA_ERRORS += "Local data is missing"
         return
 
     try:

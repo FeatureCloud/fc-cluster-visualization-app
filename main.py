@@ -27,4 +27,5 @@ if __name__ == '__main__':
     if env == 'fc':
         start_app()
     else:
-        FeatureCloudVisualization.start(env, None)
+        fc_visualization = FeatureCloudVisualization.FeatureCloudVisualization()
+        fc_visualization.start(env, None)

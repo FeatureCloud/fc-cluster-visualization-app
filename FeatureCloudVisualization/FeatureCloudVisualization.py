@@ -20,231 +20,241 @@ from plotly.tools import DEFAULT_PLOTLY_COLORS
 
 
 class FeatureCloudVisualization:
-    K_VALUE_DISTANCE = 0
-    DISTANCE_DF = []
-    CONFOUNDING_META = []
-    DATA_COLUMNS = []
-    DF_SCREE_PLOT = []
-    K_VALUES = []
-    DATAFRAMES_BY_K_VALUE = []
-    DF_SILHOUETTE = []
-    DELIMITER = ''
-    BASE_DIR_FC_ENV = '/mnt/input'
-    DATA_DIR = ''
-    OUTPUT_DIR = ''
-    K_VALUE_CONFOUNDERS = 0
-    HEATMAP_INDEX_LIST = []
-    MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY = 5
-    DATA_ERRORS = ''
-    VOLCANO_DF = []
 
-    # Configurable paths for data files
-    LOCAL_DATA_PATH = ''
-    CONFOUNDING_DATA_PATH = ''
-    CONFOUNDING_META_PATH = ''
-    DISTANCE_MATRIX_PATH = ''
-    VARIANCE_EXPLAINED_PATH = ''
-    K_VALUES_CLUSTERING_RESULT_DIR = ''
-    K_VALUES_CLUSTERING_FILE_NAME = ''
-    K_VALUES_SILHOUETTE_FILE_NAME = ''
-    VOLCANO_DATA_PATH = ''
-    DOWNLOAD_DIR = ''
+    def __init__(self):
+        self.k_value_distance = 0
+        self.distance_df = []
+        self.confounding_meta = []
+        self.data_columns = []
+        self.scree_plot = []
+        self.k_values = []
+        self.dataframes_by_k_value = []
+        self.silhouette = []
+        self.delimiter = ''
+        self.base_dir_fc_env = '/mnt/input'
+        self.data_dir = ''
+        self.output_dir = ''
+        self.k_value_confounders = 0
+        self.heatmap_index_list = []
+        self.max_nr_of_confounding_factors_to_display = 5
+        self.data_errors = ''
+        self.volcano_df = []
 
-    ENV = ''
+        # Configurable paths for data files
+        self.local_data_path = ''
+        self.confounding_data_path = ''
+        self.confounding_meta_PATH = ''
+        self.distance_matrix_path = ''
+        self.variance_explained_path = ''
+        self.k_values_clustering_result_dir = ''
+        self.k_values_clustering_file_name = ''
+        self.k_values_silhouette_file_name = ''
+        self.volcano_data_path = ''
+        self.download_dir = ''
+        self.env = ''
 
-    styles = {
-        'pre': {
-            'border': 'thin lightgrey solid',
-            'overflowX': 'scroll'
-        }
-    }
+    def start(self, env, path_prefix):
+        def run_fc():
+            dash.run_server(debug=False, port=8050)
 
-    def setup(env):
-        global DELIMITER, DATA_DIR, OUTPUT_DIR, LOCAL_DATA_PATH, CONFOUNDING_DATA_PATH, CONFOUNDING_META_PATH, \
-            DISTANCE_MATRIX_PATH, VARIANCE_EXPLAINED_PATH, K_VALUES_CLUSTERING_RESULT_DIR, K_VALUES_CLUSTERING_FILE_NAME, \
-            K_VALUES_SILHOUETTE_FILE_NAME, DOWNLOAD_DIR, ENV, BASE_DIR_FC_ENV, VOLCANO_DATA_PATH
+        def run_native():
+            dash.run_server(debug=True, port=8050)
 
-        ENV = env
+        self.setup(env)
+        self.assemble_dataframes()
+        dash = self.create_dash(path_prefix)
 
-        DATA_DIR = "./data"
-        OUTPUT_DIR = f'{DATA_DIR}/output'
+        if env == 'fc':
+            dash.run_server(debug=False, port=8050)
+            # process = multiprocessing.Process(target=run_fc)
+            # process.start()
+        else:
+            dash.run_server(debug=True, port=8050)
+            # process = multiprocessing.Process(target=run_native)
+            # process.start()
 
-        if ENV == 'fc':
-            DATA_DIR = '/mnt/input'
-            OUTPUT_DIR = '/mnt/output'
+    def setup(self, env):
+        self.env = env
+        self.data_dir = "./data"
+        self.output_dir = f'{self.data_dir}/output'
 
-        DELIMITER = ';'
-        LOCAL_DATA_PATH = f'{DATA_DIR}/localData.csv'
-        DISTANCE_MATRIX_PATH = f'{DATA_DIR}/distanceMatrix.csv'
-        CONFOUNDING_META_PATH = f'{DATA_DIR}/confoundingData.meta'
-        CONFOUNDING_DATA_PATH = f'{DATA_DIR}/confoundingData.csv'
-        VARIANCE_EXPLAINED_PATH = f'{DATA_DIR}/variance_explained.csv'
-        K_VALUES_CLUSTERING_RESULT_DIR = f'{DATA_DIR}/results'
-        K_VALUES_CLUSTERING_FILE_NAME = 'clustering.csv'
-        K_VALUES_SILHOUETTE_FILE_NAME = 'silhouette.csv'
-        VOLCANO_DATA_PATH = f'{DATA_DIR}/volcano.csv'
-        DOWNLOAD_DIR = f'{OUTPUT_DIR}/downloads'
+        if self.env == 'fc':
+            self.data_dir = '/mnt/input'
+            self.output_dir = '/mnt/output'
 
-        if ENV == 'fc':
+        self.delimiter = ';'
+        self.local_data_path = f'{self.data_dir}/localData.csv'
+        self.distance_matrix_path = f'{self.data_dir}/distanceMatrix.csv'
+        self.confounding_meta_PATH = f'{self.data_dir}/confoundingData.meta'
+        self.confounding_data_path = f'{self.data_dir}/confoundingData.csv'
+        self.variance_explained_path = f'{self.data_dir}/variance_explained.csv'
+        self.k_values_clustering_result_dir = f'{self.data_dir}/results'
+        self.k_values_clustering_file_name = 'clustering.csv'
+        self.k_values_silhouette_file_name = 'silhouette.csv'
+        self.volcano_data_path = f'{self.data_dir}/volcano.csv'
+        self.download_dir = f'{self.output_dir}/downloads'
+
+        if self.env == 'fc':
             # copy input folder content to output folder
-            shutil.copytree(DATA_DIR, OUTPUT_DIR, dirs_exist_ok=True)
+            shutil.copytree(self.data_dir, self.output_dir, dirs_exist_ok=True)
 
             os.chdir('./app')
 
         # process config.yml if there is any
-        config_file_path = DATA_DIR + '/config.yml'
+        config_file_path = self.data_dir + '/config.yml'
         try:
             with open(config_file_path) as f:
                 config = yaml.load(f, Loader=yaml.FullLoader)
                 if 'fc-cluster-visualization-app' in config:
                     config = config['fc-cluster-visualization-app']
-                    if 'delimiter' in config:
-                        DELIMITER = config['delimiter']
+                    if 'self.delimiter' in config:
+                        self.delimiter = config['self.delimiter']
                     if 'data-dir' in config:
-                        if ENV == 'fc':
-                            DATA_DIR = os.path.join(BASE_DIR_FC_ENV, config['data-dir'])
+                        if self.env == 'fc':
+                            self.data_dir = os.path.join(self.base_dir_fc_env, config['data-dir'])
                         else:
-                            DATA_DIR = config['data-dir']
+                            self.data_dir = config['data-dir']
                     if 'local-data-path' in config:
-                        if ENV == 'fc':
-                            LOCAL_DATA_PATH = os.path.join(BASE_DIR_FC_ENV, config['local-data-path'])
+                        if self.env == 'fc':
+                            self.local_data_path = os.path.join(self.base_dir_fc_env, config['local-data-path'])
                         else:
-                            LOCAL_DATA_PATH = config['local-data-path']
+                            self.local_data_path = config['local-data-path']
                     if 'distance-matrix-path' in config:
-                        if ENV == 'fc':
-                            DISTANCE_MATRIX_PATH = os.path.join(BASE_DIR_FC_ENV, config['distance-matrix-path'])
+                        if self.env == 'fc':
+                            self.distance_matrix_path = os.path.join(self.base_dir_fc_env,
+                                                                     config['distance-matrix-path'])
                         else:
-                            DISTANCE_MATRIX_PATH = config['distance-matrix-path']
+                            self.distance_matrix_path = config['distance-matrix-path']
                     if 'confounding-meta-path' in config:
-                        if ENV == 'fc':
-                            CONFOUNDING_META_PATH = os.path.join(BASE_DIR_FC_ENV, config['confounding-meta-path'])
+                        if self.env == 'fc':
+                            self.confounding_meta_PATH = os.path.join(self.base_dir_fc_env,
+                                                                      config['confounding-meta-path'])
                         else:
-                            CONFOUNDING_META_PATH = config['confounding-meta-path']
+                            self.confounding_meta_PATH = config['confounding-meta-path']
                     if 'confounding-data-path' in config:
-                        if ENV == 'fc':
-                            CONFOUNDING_DATA_PATH = os.path.join(BASE_DIR_FC_ENV, config['confounding-data-path'])
+                        if self.env == 'fc':
+                            self.confounding_data_path = os.path.join(self.base_dir_fc_env,
+                                                                      config['confounding-data-path'])
                         else:
-                            CONFOUNDING_DATA_PATH = config['confounding-data-path']
+                            self.confounding_data_path = config['confounding-data-path']
                     if 'variance-explained-path' in config:
-                        if ENV == 'fc':
-                            VARIANCE_EXPLAINED_PATH = os.path.join(BASE_DIR_FC_ENV, config['variance-explained-path'])
+                        if self.env == 'fc':
+                            self.variance_explained_path = os.path.join(self.base_dir_fc_env,
+                                                                        config['variance-explained-path'])
                         else:
-                            VARIANCE_EXPLAINED_PATH = config['variance-explained-path']
+                            self.variance_explained_path = config['variance-explained-path']
                     if 'k-values-clustering-result-dir' in config:
-                        if ENV == 'fc':
-                            K_VALUES_CLUSTERING_RESULT_DIR = os.path.join(BASE_DIR_FC_ENV,
-                                                                          config['k-values-clustering-result-dir'])
+                        if self.env == 'fc':
+                            self.k_values_clustering_result_dir = os.path.join(self.base_dir_fc_env,
+                                                                               config['k-values-clustering-result-dir'])
                         else:
-                            K_VALUES_CLUSTERING_RESULT_DIR = config['k-values-clustering-result-dir']
+                            self.k_values_clustering_result_dir = config['k-values-clustering-result-dir']
                     if 'k-values-clustering-file-name' in config:
-                        K_VALUES_CLUSTERING_FILE_NAME = config['k-values-clustering-file-name']
+                        self.k_values_clustering_file_name = config['k-values-clustering-file-name']
                     if 'k-values-silhouette-file-name' in config:
-                        K_VALUES_SILHOUETTE_FILE_NAME = config['k-values-silhouette-file-name']
+                        self.k_values_silhouette_file_name = config['k-values-silhouette-file-name']
                     if 'volcano-data-path' in config:
-                        VOLCANO_DATA_PATH = config['volcano-data-path']
+                        self.volcano_data_path = config['volcano-data-path']
                     if 'download-dir' in config:
-                        if ENV == 'fc':
-                            DOWNLOAD_DIR = os.path.join(OUTPUT_DIR, config['download-dir'])
+                        if self.env == 'fc':
+                            self.download_dir = os.path.join(self.output_dir, config['download-dir'])
                         else:
-                            DOWNLOAD_DIR = config['download-dir']
+                            self.download_dir = config['download-dir']
         except IOError:
             print('No config file found, will work with default values.')
 
-        if not os.path.isdir(DOWNLOAD_DIR):
-            os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+        if not os.path.isdir(self.download_dir):
+            os.makedirs(self.download_dir, exist_ok=True)
 
         print("Working with the following config data:")
-        print(f'DELMITIER={DELIMITER}')
-        print(f'DATA-DIR={DATA_DIR}')
-        print(f'LOCAL_DATA_PATH={LOCAL_DATA_PATH}')
-        print(f'DISTANCE_MATRIX_PATH={DISTANCE_MATRIX_PATH}')
-        print(f'CONFOUNDING_META_PATH={CONFOUNDING_META_PATH}')
-        print(f'CONFOUNDING_DATA_PATH={CONFOUNDING_DATA_PATH}')
-        print(f'VARIANCE_EXPLAINED_PATH={VARIANCE_EXPLAINED_PATH}')
-        print(f'K_VALUES_CLUSTERING_RESULT_DIR={K_VALUES_CLUSTERING_RESULT_DIR}')
-        print(f'K_VALUES_CLUSTERING_FILE_NAME={K_VALUES_CLUSTERING_FILE_NAME}')
-        print(f'K_VALUES_SILHOUETTE_FILE_NAME={K_VALUES_SILHOUETTE_FILE_NAME}')
-        print(f'VOLCANO_DATA_PATH={VOLCANO_DATA_PATH}')
-        print(f'DOWNLOAD_DIR={DOWNLOAD_DIR}')
+        print(f'DELMITIER={self.delimiter}')
+        print(f'DATA-DIR={self.data_dir}')
+        print(f'self.local_data_path={self.local_data_path}')
+        print(f'self.distance_matrix_path={self.distance_matrix_path}')
+        print(f'self.confounding_meta_PATH={self.confounding_meta_PATH}')
+        print(f'self.confounding_data_path={self.confounding_data_path}')
+        print(f'self.variance_explained_path={self.variance_explained_path}')
+        print(f'self.k_values_clustering_result_dir={self.k_values_clustering_result_dir}')
+        print(f'self.k_values_clustering_file_name={self.k_values_clustering_file_name}')
+        print(f'self.k_values_silhouette_file_name={self.k_values_silhouette_file_name}')
+        print(f'self.volcano_data_path={self.volcano_data_path}')
+        print(f'self.download_dir={self.download_dir}')
 
-    def assemble_dataframes():
-        global DISTANCE_DF, CONFOUNDING_META, DATAFRAMES_BY_K_VALUE, DF_SILHOUETTE, DF_SCREE_PLOT, \
-            K_VALUES, DATA_COLUMNS, DATA_ERRORS, LOCAL_DATA_PATH, DISTANCE_MATRIX_PATH, CONFOUNDING_META_PATH, \
-            CONFOUNDING_DATA_PATH, VARIANCE_EXPLAINED_PATH, K_VALUES_CLUSTERING_RESULT_DIR, K_VALUES_CLUSTERING_FILE_NAME, \
-            K_VALUES_SILHOUETTE_FILE_NAME, VOLCANO_DF
-        DATAFRAMES_BY_K_VALUE = []
-        if not os.path.isdir(DATA_DIR):
-            DATA_ERRORS += "Data folder is missing."
+    def assemble_dataframes(self):
+        self.dataframes_by_k_value = []
+        if not os.path.isdir(self.data_dir):
+            self.data_errors += "Data folder is missing."
 
         try:
-            base_df = pd.read_csv(LOCAL_DATA_PATH, delimiter=DELIMITER, skiprows=0)
+            base_df = pd.read_csv(self.local_data_path, delimiter=self.delimiter, skiprows=0)
             nr_of_samples = len(base_df.index)
         except IOError:
             print(f'Current directory is: {os.getcwd()}')
-            print(f'Did not find local data file in: {LOCAL_DATA_PATH}')
-            DATA_ERRORS += "Local data is missing"
+            print(f'Did not find local data file in: {self.local_data_path}')
+            self.data_errors += "Local data is missing"
 
         try:
-            VOLCANO_DF = pd.read_csv(VOLCANO_DATA_PATH, delimiter=DELIMITER, skiprows=0)
-            if 'EFFECTSIZE' not in VOLCANO_DF.columns or 'P' not in VOLCANO_DF.columns or 'SNP' not in VOLCANO_DF.columns \
-                    or 'GENE' not in VOLCANO_DF.columns:
-                DATA_ERRORS += f'Error: Wrong delimiter ({DELIMITER}) or missing column(s) in data set for volcano plot. ' \
-                               f'Required columns are: "EFFECTSIZE", "P", "SNP", "GENE".\n'
+            self.volcano_df = pd.read_csv(self.volcano_data_path, delimiter=self.delimiter, skiprows=0)
+            if 'EFFECTSIZE' not in self.volcano_df.columns or 'P' not in self.volcano_df.columns or 'SNP' not in self.volcano_df.columns \
+                    or 'GENE' not in self.volcano_df.columns:
+                self.data_errors += f'Error: Wrong self.delimiter ({self.delimiter}) or missing column(s) in data set for volcano plot. ' \
+                                    f'Required columns are: "EFFECTSIZE", "P", "SNP", "GENE".\n'
         except IOError:
-            DATA_ERRORS += f'Warning: {VOLCANO_DATA_PATH} does not exist.\n'
+            self.data_errors += f'Warning: {self.volcano_data_path} does not exist.\n'
         except pd.errors.EmptyDataError:
-            DATA_ERRORS += f'Error: {VOLCANO_DATA_PATH} is empty.\n'
+            self.data_errors += f'Error: {self.volcano_data_path} is empty.\n'
 
-        if len(DATAFRAMES_BY_K_VALUE) == 0:
+        if len(self.dataframes_by_k_value) == 0:
             return
 
         try:
-            DISTANCE_DF = pd.read_csv(DISTANCE_MATRIX_PATH, delimiter=DELIMITER, skiprows=0, index_col=0)
-            if len(DISTANCE_DF.columns) != len(DISTANCE_DF.index) or len(DISTANCE_DF.index) != nr_of_samples:
-                DATA_ERRORS += f'Data inconsistency in {DISTANCE_MATRIX_PATH}. Number of samples are not matching \n'
+            self.distance_df = pd.read_csv(self.distance_matrix_path, delimiter=self.delimiter, skiprows=0, index_col=0)
+            if len(self.distance_df.columns) != len(self.distance_df.index) or len(
+                    self.distance_df.index) != nr_of_samples:
+                self.data_errors += f'Data inconsistency in {self.distance_matrix_path}. Number of samples are not matching \n'
         except IOError:
-            DATA_ERRORS += f'Warning: {DISTANCE_MATRIX_PATH} does not appear to exist.\n'
+            self.data_errors += f'Warning: {self.distance_matrix_path} does not appear to exist.\n'
         except pd.errors.EmptyDataError:
-            DATA_ERRORS += "Error: Distance matrix is empty.\n"
+            self.data_errors += "Error: Distance matrix is empty.\n"
 
         try:
-            CONFOUNDING_META = pd.read_csv(CONFOUNDING_META_PATH, delimiter=DELIMITER, skiprows=0)
-            confounding_data = pd.read_csv(CONFOUNDING_DATA_PATH, delimiter=DELIMITER, skiprows=0)
-            if len(CONFOUNDING_META) > MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY:
-                CONFOUNDING_META = CONFOUNDING_META.head(MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY)
-                DATA_ERRORS += f'Warning: The application supports a maximum of {MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY} of confounding factors. ' \
-                               f'The first {MAX_NR_OF_CONFOUNDING_FACTORS_TO_DISPLAY} will be displayed \n'
-            confounding_data_expected_column_list = CONFOUNDING_META['name'].tolist()
+            self.confounding_meta = pd.read_csv(self.confounding_meta_PATH, delimiter=self.delimiter, skiprows=0)
+            confounding_data = pd.read_csv(self.confounding_data_path, delimiter=self.delimiter, skiprows=0)
+            if len(self.confounding_meta) > self.max_nr_of_confounding_factors_to_display:
+                self.confounding_meta = self.confounding_meta.head(self.max_nr_of_confounding_factors_to_display)
+                self.data_errors += f'Warning: The application supports a maximum of {self.max_nr_of_confounding_factors_to_display} of confounding factors. ' \
+                                    f'The first {self.max_nr_of_confounding_factors_to_display} will be displayed \n'
+            confounding_data_expected_column_list = self.confounding_meta['name'].tolist()
             confounding_data_expected_column_list.append('id')
             # keep only the selected confounding factors
             confounding_data = confounding_data[
                 confounding_data.columns.intersection(confounding_data_expected_column_list)]
         except IOError:
-            DATA_ERRORS += "Warning: Confounding data is missing.\n"
+            self.data_errors += "Warning: Confounding data is missing.\n"
             confounding_data = []
         except pd.errors.EmptyDataError:
-            DATA_ERRORS += "Error: Confounding data and/or meta is empty.\n"
+            self.data_errors += "Error: Confounding data and/or meta is empty.\n"
             confounding_data = []
 
         try:
-            DF_SCREE_PLOT = pd.read_csv(VARIANCE_EXPLAINED_PATH, delimiter=DELIMITER, skiprows=0)
+            self.scree_plot = pd.read_csv(self.variance_explained_path, delimiter=self.delimiter, skiprows=0)
         except IOError:
-            DATA_ERRORS += f'Warning: {VARIANCE_EXPLAINED_PATH} does not exist.\n'
+            self.data_errors += f'Warning: {self.variance_explained_path} does not exist.\n'
         except pd.errors.EmptyDataError:
-            DATA_ERRORS += f'Error: {VARIANCE_EXPLAINED_PATH} is empty.\n'
+            self.data_errors += f'Error: {self.variance_explained_path} is empty.\n'
 
-        DATA_COLUMNS = base_df.columns.to_list()
-        DATA_COLUMNS.remove('id')
-        if 'client_id' in DATA_COLUMNS:
-            DATA_COLUMNS.remove('client_id')
+        self.data_columns = base_df.columns.to_list()
+        self.data_columns.remove('id')
+        if 'client_id' in self.data_columns:
+            self.data_columns.remove('client_id')
 
-        if os.path.isdir(DATA_DIR) and os.path.isdir(K_VALUES_CLUSTERING_RESULT_DIR):
-            for dir_name in [f.name for f in os.scandir(K_VALUES_CLUSTERING_RESULT_DIR) if f.is_dir()]:
+        if os.path.isdir(self.data_dir) and os.path.isdir(self.k_values_clustering_result_dir):
+            for dir_name in [f.name for f in os.scandir(self.k_values_clustering_result_dir) if f.is_dir()]:
                 cluster_nr = int(dir_name.split('_')[1])
-                K_VALUES.append(cluster_nr)
+                self.k_values.append(cluster_nr)
                 cluster_data = pd.read_csv(
-                    f'{K_VALUES_CLUSTERING_RESULT_DIR}/{dir_name}/{K_VALUES_CLUSTERING_FILE_NAME}',
-                    delimiter=DELIMITER, skiprows=0)
+                    f'{self.k_values_clustering_result_dir}/{dir_name}/{self.k_values_clustering_file_name}',
+                    delimiter=self.delimiter, skiprows=0)
                 df = pd.merge(base_df, cluster_data, on="id")
 
                 # put cluster column in different place to be used in hovertemplate, based on customdata parameter
@@ -258,38 +268,38 @@ class FeatureCloudVisualization:
                 df = df[column_list]
                 if len(confounding_data) > 0:
                     df = pd.merge(df, confounding_data, on='id')
-                DATAFRAMES_BY_K_VALUE.append(
+                self.dataframes_by_k_value.append(
                     {
                         'k': cluster_nr,
                         'df': df,
                     }
                 )
-                DF_SILHOUETTE.append(
+                self.silhouette.append(
                     {
                         'k': cluster_nr,
                         'df': pd.read_csv(
-                            f'{K_VALUES_CLUSTERING_RESULT_DIR}/{dir_name}/{K_VALUES_SILHOUETTE_FILE_NAME}',
-                            delimiter=DELIMITER).sort_values(
+                            f'{self.k_values_clustering_result_dir}/{dir_name}/{self.k_values_silhouette_file_name}',
+                            delimiter=self.delimiter).sort_values(
                             ["cluster", "y"], ascending=(True, False)).reset_index(),
                     }
                 )
-        if len(K_VALUES) == 0 or len(DATAFRAMES_BY_K_VALUE) == 0 or len(DF_SILHOUETTE) == 0:
-            K_VALUES.append(0)
+        if len(self.k_values) == 0 or len(self.dataframes_by_k_value) == 0 or len(self.silhouette) == 0:
+            self.k_values.append(0)
             base_df['cluster'] = 0
-            DATAFRAMES_BY_K_VALUE.append(
+            self.dataframes_by_k_value.append(
                 {
                     'k': 0,
                     'df': pd.merge(base_df, confounding_data, on='id') if len(confounding_data) > 0 else base_df
                 }
             )
-            DATA_ERRORS += "Error: Clustering information is missing or corrupt.\n"
+            self.data_errors += "Error: Clustering information is missing or corrupt.\n"
 
-    def create_dash(path_prefix):
+    def create_dash(self, path_prefix):
         app = Dash(__name__,
                    requests_pathname_prefix=path_prefix,
                    title='FeatureCloud Cluster Visualization App',
                    suppress_callback_exceptions=True)
-        if len(DATAFRAMES_BY_K_VALUE) == 0 and len(VOLCANO_DF) == 0:
+        if len(self.dataframes_by_k_value) == 0 and len(self.volcano_df) == 0:
             f = open('README.md', 'r')
             app.layout = html.Div([
                 dbc.Row(
@@ -310,13 +320,13 @@ class FeatureCloudVisualization:
             ],
                 className='help-ct')
         else:
-            confounding_style = {'display': 'none'} if len(DATAFRAMES_BY_K_VALUE) == 0 else {}
-            distance_style = {'display': 'none'} if len(DISTANCE_DF) == 0 else {}
-            scree_plot_style = {'display': 'none'} if len(DF_SCREE_PLOT) == 0 else {}
-            cluster_quality_style = {'display': 'none'} if len(K_VALUES) <= 1 else {}
-            volcano_plot_style = {'display': 'none'} if len(VOLCANO_DF) <= 1 else {}
-            finished_button_style = {'display': 'none'} if ENV != 'fc' else {'float': 'right'}
-            tab_value = 'tab-confounders' if len(DATAFRAMES_BY_K_VALUE) > 0 else 'tab-volcano-plot'
+            confounding_style = {'display': 'none'} if len(self.dataframes_by_k_value) == 0 else {}
+            distance_style = {'display': 'none'} if len(self.distance_df) == 0 else {}
+            scree_plot_style = {'display': 'none'} if len(self.scree_plot) == 0 else {}
+            cluster_quality_style = {'display': 'none'} if len(self.k_values) <= 1 else {}
+            volcano_plot_style = {'display': 'none'} if len(self.volcano_df) <= 1 else {}
+            finished_button_style = {'display': 'none'} if self.env != 'fc' else {'float': 'right'}
+            tab_value = 'tab-confounders' if len(self.dataframes_by_k_value) > 0 else 'tab-volcano-plot'
 
             app.layout = html.Div([
                 html.H2('FeatureCloud Cluster Visualization App', className='fc-header'),
@@ -341,7 +351,7 @@ class FeatureCloudVisualization:
                 ]),
                 html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'}),
                 dbc.Toast(
-                    [html.P(DATA_ERRORS, className="mb-0")],
+                    [html.P(self.data_errors, className="mb-0")],
                     id="data-validation-toast",
                     header="Error",
                     duration=10000,
@@ -357,23 +367,22 @@ class FeatureCloudVisualization:
             Input('tabs-ct', 'value')
         )
         def render_content(tab):
-            global DATA_ERRORS
             show_toast = False
-            if len(DATA_ERRORS) > 0:
+            if len(self.data_errors) > 0:
                 show_toast = True
-                DATA_ERRORS = ''
+                self.data_errors = ''
             if tab == 'tab-confounders':
                 return render_confounders(), show_toast
             elif tab == 'tab-distances':
-                return render_distances(), show_toast
+                return self.render_distances(), show_toast
             elif tab == 'tab-clustering-quality':
-                return render_clustering_quality(), show_toast
+                return self.render_clustering_quality(), show_toast
             elif tab == 'tab-scree-plot':
-                return render_scree_plot(), show_toast
+                return self.render_scree_plot(), show_toast
             elif tab == 'tab-volcano-plot':
-                return render_volcano_plot(), show_toast
+                return self.render_volcano_plot(), show_toast
             elif tab == 'tab-help':
-                return render_help(), show_toast
+                return self.render_help(), show_toast
 
         @app.callback(
             Output('toaster-visualization-finished', 'is_open'),
@@ -390,9 +399,9 @@ class FeatureCloudVisualization:
             return False
 
         def render_confounders():
-            confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
+            confounding_df = self.get_df_by_k_value(self.k_values[0], self.dataframes_by_k_value)
             datatable_columns = confounding_df.columns.to_list()
-            height_multiplier = 0 if len(CONFOUNDING_META) == 0 else len(CONFOUNDING_META.index)
+            height_multiplier = 0 if len(self.confounding_meta) == 0 else len(self.confounding_meta.index)
             confounders_filter_height = f'{32 + height_multiplier * 40}px'
             id_post_tag = 'confounders-tab'
             cluster_client_switch_style = {}
@@ -418,20 +427,22 @@ class FeatureCloudVisualization:
                                     ],
                                     style=cluster_client_switch_style
                                 ),
-                                dbc.Col(children=get_k_filter(id_post_tag)),
-                                dbc.Col(get_cluster_values_filter(id_post_tag)),
+                                dbc.Col(children=self.get_k_filter(id_post_tag)),
+                                dbc.Col(self.get_cluster_values_filter(id_post_tag)),
                                 dbc.Col(
                                     children=
                                     [
                                         html.Span('X axes', style={'float': 'left', 'margin-top': '5px'}),
-                                        html.Span(dcc.Dropdown(DATA_COLUMNS, DATA_COLUMNS[0], id='xaxis-dropdown',
-                                                               className='fc-dropdown', clearable=False,
-                                                               style={'float': 'left'})),
+                                        html.Span(
+                                            dcc.Dropdown(self.data_columns, self.data_columns[0], id='xaxis-dropdown',
+                                                         className='fc-dropdown', clearable=False,
+                                                         style={'float': 'left'})),
                                         html.Span('Y axes',
                                                   style={'float': 'left', 'margin-top': '5px', 'margin-left': '10px'}),
-                                        html.Span(dcc.Dropdown(DATA_COLUMNS, DATA_COLUMNS[1], id='yaxis-dropdown',
-                                                               className='fc-dropdown', clearable=False,
-                                                               style={'float': 'left'})),
+                                        html.Span(
+                                            dcc.Dropdown(self.data_columns, self.data_columns[1], id='yaxis-dropdown',
+                                                         className='fc-dropdown', clearable=False,
+                                                         style={'float': 'left'})),
                                     ]
                                 ),
                                 dbc.Col(
@@ -453,14 +464,14 @@ class FeatureCloudVisualization:
                 dbc.Row(
                     dbc.Col(
                         html.Div(
-                            get_confounding_factors_filter('confounders'),
+                            self.get_confounding_factors_filter('confounders'),
                             id='confounding-factors-filter-ct',
                             className='confounding-factors-filter-ct',
                             style={'height': confounders_filter_height}
                         ),
                     )
                 ),
-                get_download_button(),
+                self.get_download_button(),
                 dbc.Row(dcc.Graph(id='confounders-scatter', className='confounders-scatter')),
                 dbc.Row(
                     dbc.Fade(
@@ -536,31 +547,31 @@ class FeatureCloudVisualization:
         )
         def filter_confounders_view(k_value, selected_clusters, xaxis, yaxis, checklist_values, range_values,
                                     use_pie_charts, use_clusters):
-            global K_VALUE_CONFOUNDERS
             if use_clusters:
                 clustering_field = 'cluster'
             else:
                 clustering_field = 'client_id'
-            confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
-            cluster_checklist_values = get_cluster_values_list(confounding_df)
+            confounding_df = self.get_df_by_k_value(k_value, self.dataframes_by_k_value)
+            cluster_checklist_values = self.get_cluster_values_list(confounding_df)
             # Detect if K value has changed, to reset checklist values to all values selected
-            if K_VALUE_CONFOUNDERS != k_value:
+            if self.k_value_confounders != k_value:
                 selected_clusters = cluster_checklist_values
-            K_VALUE_CONFOUNDERS = k_value
+            self.k_value_confounders = k_value
             # filter base dataframe
-            index_list = filter_dataframe_on_confounding_factors(confounding_df, selected_clusters, checklist_values,
-                                                                 range_values, use_clusters)
+            index_list = self.filter_dataframe_on_confounding_factors(confounding_df, selected_clusters,
+                                                                      checklist_values,
+                                                                      range_values, use_clusters)
             confounding_df = confounding_df[confounding_df.index.isin(index_list)]
             fig = get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts, clustering_field)
 
-            save_fig_as_image(fig)
+            self.save_fig_as_image(fig)
 
             return fig, cluster_checklist_values, selected_clusters
 
         def get_figure_with_subplots(confounding_df, k_value, xaxis, yaxis, use_pie_charts, clustering_field):
             cluster_values_list = confounding_df[clustering_field].unique()
             cluster_values_list_length = len(cluster_values_list)
-            nr_of_confounding_factors = 0 if len(CONFOUNDING_META) == 0 else len(CONFOUNDING_META.index)
+            nr_of_confounding_factors = 0 if len(self.confounding_meta) == 0 else len(self.confounding_meta.index)
 
             if 'client_id' in confounding_df:
                 client_id_present = True
@@ -577,7 +588,7 @@ class FeatureCloudVisualization:
                 else:
                     nr_rows = nr_of_confounding_factors + k_value + 1
 
-            specs, subplot_titles = get_specs_for_matrix(nr_rows, nr_cols, use_pie_charts, clustering_field)
+            specs, subplot_titles = self.get_specs_for_matrix(nr_rows, nr_cols, use_pie_charts, clustering_field)
             fig = make_subplots(
                 rows=nr_rows,
                 cols=nr_cols,
@@ -625,7 +636,7 @@ class FeatureCloudVisualization:
                 fig.append_trace(scatter_plot, row=1, col=1)
 
                 if cluster_values_list_length > 1:
-                    path = confidence_ellipse(df[xaxis], df[yaxis])
+                    path = self.confidence_ellipse(df[xaxis], df[yaxis])
                     fig.add_shape(
                         type='path',
                         path=path,
@@ -642,8 +653,8 @@ class FeatureCloudVisualization:
                 if (
                         cluster_values_list_length > 1 and clustering_field == 'cluster') or clustering_field == 'client_id':
                     for j in range(0, nr_of_confounding_factors):
-                        col = CONFOUNDING_META.iloc[j]['name']
-                        data_type = CONFOUNDING_META.iloc[j]['data_type']
+                        col = self.confounding_meta.iloc[j]['name']
+                        data_type = self.confounding_meta.iloc[j]['data_type']
                         if data_type == 'continuous' or data_type == 'ordinal' or not use_pie_charts:
                             # add histogram
                             bar_continuous = go.Histogram(
@@ -671,8 +682,8 @@ class FeatureCloudVisualization:
 
             # Add summary row for confounding factors
             for j in range(0, nr_of_confounding_factors):
-                col = CONFOUNDING_META.iloc[j]['name']
-                data_type = CONFOUNDING_META.iloc[j]['data_type']
+                col = self.confounding_meta.iloc[j]['name']
+                data_type = self.confounding_meta.iloc[j]['data_type']
                 for i in cluster_values_list:
                     df = confounding_df[confounding_df[clustering_field] == i]
                     color = DEFAULT_PLOTLY_COLORS[i]
@@ -721,8 +732,8 @@ class FeatureCloudVisualization:
             [Input("btn-download-plot", "n_clicks")]
         )
         def download_image(n_clicks):
-            if (n_clicks is not None and n_clicks > 0):
-                return dcc.send_file(os.path.join(DOWNLOAD_DIR, 'plot.png'))
+            if n_clicks is not None and n_clicks > 0:
+                return dcc.send_file(os.path.join(self.download_dir, 'plot.png'))
 
         @app.callback(
             Output("selection-datatable", "data"),
@@ -737,7 +748,7 @@ class FeatureCloudVisualization:
         def display_selected(selected_data, k_value, xaxis, yaxis, use_pie_charts):
             if selected_data is None:
                 return [], False, go.Figure()
-            confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
+            confounding_df = self.get_df_by_k_value(k_value, self.dataframes_by_k_value)
             datatable_columns = confounding_df.columns.to_list()
             records = []
             selected_points = selected_data['points']
@@ -765,7 +776,7 @@ class FeatureCloudVisualization:
             default_file_name = 'Outlier_Group'
             df = pd.DataFrame(data=data, columns=columns)
             if inverse_selection == ['Download inverse selection']:
-                df = pd.DataFrame(data=filter_dataframe_inverse_on_id(k_value, df['id'].tolist()), columns=columns)
+                df = pd.DataFrame(data=self.filter_dataframe_inverse_on_id(k_value, df['id'].tolist()), columns=columns)
 
             if group_name is None:
                 group_name = default_file_name
@@ -775,7 +786,7 @@ class FeatureCloudVisualization:
                     group_name = default_file_name
 
             # Save data in file system as well
-            df.to_csv(os.path.join(DOWNLOAD_DIR, f'{group_name}.csv'))
+            df.to_csv(os.path.join(self.download_dir, f'{group_name}.csv'))
 
             return dcc.send_data_frame(df.to_csv, f'{group_name}.csv')
 
@@ -798,23 +809,22 @@ class FeatureCloudVisualization:
             Input({'type': 'filter-range-slider-distance', 'index': ALL}, 'value'),
         )
         def filter_heatmap(k_value, selected_clusters, checklist_values, range_values):
-            global K_VALUE_DISTANCE, HEATMAP_INDEX_LIST
-            confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
-            cluster_checklist_values = get_cluster_values_list(confounding_df)
+            confounding_df = self.get_df_by_k_value(k_value, self.dataframes_by_k_value)
+            cluster_checklist_values = self.get_cluster_values_list(confounding_df)
             # Detect if K value has changed, to reset checklist values to all values selected
-            if K_VALUE_DISTANCE != k_value:
+            if self.k_value_distance != k_value:
                 selected_clusters = cluster_checklist_values
-            K_VALUE_DISTANCE = k_value
-            index_list = filter_dataframe_on_confounding_factors(confounding_df, selected_clusters,
-                                                                 checklist_values, range_values, True)
+            self.k_value_distance = k_value
+            index_list = self.filter_dataframe_on_confounding_factors(confounding_df, selected_clusters,
+                                                                      checklist_values, range_values, True)
             display_error_toaster = False
             if len(index_list) == 0:
                 display_error_toaster = True
-                index_list = HEATMAP_INDEX_LIST
+                index_list = self.heatmap_index_list
             else:
-                HEATMAP_INDEX_LIST = index_list
+                self.heatmap_index_list = index_list
 
-            df = DISTANCE_DF[DISTANCE_DF.index.isin(index_list)]
+            df = self.distance_df[self.distance_df.index.isin(index_list)]
             fig = dash_bio.Clustergram(
                 data=df,
                 column_labels=list(df.columns.values),
@@ -825,7 +835,7 @@ class FeatureCloudVisualization:
             )
             fig.update_layout(modebar_remove=['toImage'])
 
-            save_fig_as_image(fig)
+            self.save_fig_as_image(fig)
 
             return fig, cluster_checklist_values, selected_clusters, display_error_toaster
 
@@ -834,7 +844,7 @@ class FeatureCloudVisualization:
             Input('k-labels', 'value')
         )
         def filter_k_label(value):
-            df = get_df_by_k_value(value, DF_SILHOUETTE)
+            df = self.get_df_by_k_value(value, self.silhouette)
             avg_value = "{:.2f}".format(df['y'].mean())
             cluster_values_list = df.cluster.unique()
             fig = go.Figure()
@@ -879,7 +889,7 @@ class FeatureCloudVisualization:
             )
             fig.update_layout(modebar_remove=['toImage'])
 
-            save_fig_as_image(fig)
+            self.save_fig_as_image(fig)
 
             return fig
 
@@ -891,68 +901,25 @@ class FeatureCloudVisualization:
         )
         def update_volcanoplot(effects, n_clicks, genomewideline):
             fig = dash_bio.VolcanoPlot(
-                dataframe=VOLCANO_DF,
+                dataframe=self.volcano_df,
                 genomewideline_value=genomewideline,
                 effect_size_line=effects
             )
-            save_fig_as_image(fig)
+            self.save_fig_as_image(fig)
             return fig
 
         return app
 
-    def get_download_button():
-        return dbc.Row(
-            html.Div(
-                [dbc.Button("Download plot as image", id="btn-download-plot", size='sm'), Download(id="download-plot")],
-                style={'width': '200px', 'float': 'right'}
-            )
-        )
-
-    def save_fig_as_image(fig):
+    def save_fig_as_image(self, fig):
         # Save image to download folder to be available for download
-        filepath = os.path.join(DOWNLOAD_DIR, 'plot.png')
+        filepath = os.path.join(self.download_dir, 'plot.png')
         with open(filepath, "wb") as fp:
             fp.write(fig.to_image(width=1920, height=1080))
 
-    def render_distances():
-        id_post_tag = 'distances-tab'
-        return html.Div(
-            [
-                dbc.Row(
-                    [
-                        dbc.Col(children=get_k_filter(id_post_tag)),
-                        dbc.Col(get_cluster_values_filter(id_post_tag)),
-                    ]
-                ),
-                dbc.Row(
-                    dbc.Col(
-                        html.Div(
-                            children=get_confounding_factors_filter('distance'),
-                            style={'margin-top': '20px'}
-                        )
-                    )
-                ),
-                get_download_button(),
-                dbc.Row(
-                    dbc.Col(dcc.Graph(id="distance_graph"))
-                ),
-                dbc.Toast(
-                    [html.P("Dataframe is empty. Clustergram cannot be calculated.", className="mb-0")],
-                    id="dataframe-empty-toast",
-                    header="Error",
-                    duration=4000,
-                    is_open=False,
-                    icon="danger",
-                    style={"position": "fixed", "top": 66, "right": 10, "width": 350},
-                ),
-            ],
-            style={'margin-top': '20px'}
-        )
-
-    def filter_dataframe_on_confounding_factors(confounding_df, selected_clusters, checklist_values, range_values,
+    def filter_dataframe_on_confounding_factors(self, confounding_df, selected_clusters, checklist_values, range_values,
                                                 use_clusters):
         selected_cluster_ids = []
-        if len(CONFOUNDING_META) == 0:
+        if len(self.confounding_meta) == 0:
             return confounding_df.index.tolist()
         if len(selected_clusters) > 0:
             for cluster_value in selected_clusters:
@@ -961,12 +928,12 @@ class FeatureCloudVisualization:
         if use_clusters:
             confounding_df = confounding_df.loc[confounding_df['cluster'].isin(selected_cluster_ids)]
 
-        confounding_length = len(CONFOUNDING_META.index)
+        confounding_length = len(self.confounding_meta.index)
         # Filter data based on active filters
         checklist_index = range_index = 0
         for j in range(0, confounding_length):
-            col = CONFOUNDING_META.iloc[j]["name"]
-            data_type = CONFOUNDING_META.iloc[j]['data_type']
+            col = self.confounding_meta.iloc[j]["name"]
+            data_type = self.confounding_meta.iloc[j]['data_type']
             if data_type == 'continuous':
                 range_list = range_values[range_index]
                 confounding_df = confounding_df.loc[confounding_df[col].between(range_list[0], range_list[1])]
@@ -977,36 +944,37 @@ class FeatureCloudVisualization:
                 checklist_index += 1
         return confounding_df.index.tolist()
 
-    def filter_dataframe_inverse_on_id(k_value, selected_ids):
-        confounding_df = get_df_by_k_value(k_value, DATAFRAMES_BY_K_VALUE)
+    def filter_dataframe_inverse_on_id(self, k_value, selected_ids):
+        confounding_df = self.get_df_by_k_value(k_value, self.dataframes_by_k_value)
         selected_data = confounding_df.loc[~confounding_df['id'].isin(selected_ids)]
         return selected_data
 
-    def render_clustering_quality():
+    def render_clustering_quality(self):
         return html.Div([
             dbc.Row([
                 dbc.Col(children=
                 [
                     html.Span('K', style={'float': 'left', 'margin-top': '6px'}),
                     html.Span(
-                        dcc.Dropdown(K_VALUES, K_VALUES[0], id='k-labels', className='fc-dropdown', clearable=False,
+                        dcc.Dropdown(self.k_values, self.k_values[0], id='k-labels', className='fc-dropdown',
+                                     clearable=False,
                                      style={'float': 'left'}))
                 ],
                     style={'height': '60px', 'width': '100px', 'margin': '20px 70px'}
                 ),
             ]),
-            get_download_button(),
+            self.get_download_button(),
             dbc.Row([
                 dcc.Graph(id="cluster_quality_graph"),
             ])
         ])
 
-    def render_scree_plot():
+    def render_scree_plot(self):
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             mode='lines+markers',
-            x=DF_SCREE_PLOT['component'],
-            y=DF_SCREE_PLOT['eigenvalue'],
+            x=self.scree_plot['component'],
+            y=self.scree_plot['eigenvalue'],
             marker={
                 "size": 10,
                 "symbol": "circle-open",
@@ -1020,10 +988,10 @@ class FeatureCloudVisualization:
         )
 
         fig.update_layout(modebar_remove=['toImage'])
-        save_fig_as_image(fig)
+        self.save_fig_as_image(fig)
 
         return html.Div([
-            get_download_button(),
+            self.get_download_button(),
             dbc.Row(
                 dcc.Graph(
                     id='scree-plot',
@@ -1032,26 +1000,26 @@ class FeatureCloudVisualization:
             )],
             style={'margin-top': '25px'})
 
-    def render_volcano_plot():
-        min_effect = math.floor(VOLCANO_DF['EFFECTSIZE'].min())
-        max_effect = math.ceil(VOLCANO_DF['EFFECTSIZE'].max())
+    def render_volcano_plot(self):
+        min_effect = math.floor(self.volcano_df['EFFECTSIZE'].min())
+        max_effect = math.ceil(self.volcano_df['EFFECTSIZE'].max())
         min_effect_value = math.floor(min_effect + 0.3 * (max_effect - min_effect))
         max_effect_value = math.ceil(max_effect - 0.3 * (max_effect - min_effect))
 
-        min_p_value = -math.floor(np.log10(VOLCANO_DF['P'].min()))
-        max_p_value = -math.ceil(np.log10(VOLCANO_DF['P'].max()))
+        min_p_value = -math.floor(np.log10(self.volcano_df['P'].min()))
+        max_p_value = -math.ceil(np.log10(self.volcano_df['P'].max()))
         min_genome_wide_line = min(min_p_value, max_p_value)
         max_genome_wide_line = max(min_p_value, max_p_value)
         genome_wide_line_value = math.floor(min_genome_wide_line + 0.3 * (max_genome_wide_line - min_genome_wide_line))
 
         fig = dash_bio.VolcanoPlot(
-            dataframe=VOLCANO_DF,
+            dataframe=self.volcano_df,
             genomewideline_value=genome_wide_line_value,
         )
-        save_fig_as_image(fig)
+        self.save_fig_as_image(fig)
 
         return html.Div([
-            get_download_button(),
+            self.get_download_button(),
             dbc.Row(children=[
                 dbc.Label('Effect sizes'),
                 dcc.RangeSlider(
@@ -1099,11 +1067,54 @@ class FeatureCloudVisualization:
             style={'margin-top': '25px'}
         )
 
-    def render_help():
+    def render_help(self):
         f = open('README.md', 'r')
         return dcc.Markdown(f.read(), className='help-ct')
 
-    def confidence_ellipse(x, y, n_std=1.96, size=100):
+    def get_download_button(self):
+        return dbc.Row(
+            html.Div(
+                [dbc.Button("Download plot as image", id="btn-download-plot", size='sm'), Download(id="download-plot")],
+                style={'width': '200px', 'float': 'right'}
+            )
+        )
+
+    def render_distances(self):
+        id_post_tag = 'distances-tab'
+        return html.Div(
+            [
+                dbc.Row(
+                    [
+                        dbc.Col(children=self.get_k_filter(id_post_tag)),
+                        dbc.Col(self.get_cluster_values_filter(id_post_tag)),
+                    ]
+                ),
+                dbc.Row(
+                    dbc.Col(
+                        html.Div(
+                            children=self.get_confounding_factors_filter('distance'),
+                            style={'margin-top': '20px'}
+                        )
+                    )
+                ),
+                self.get_download_button(),
+                dbc.Row(
+                    dbc.Col(dcc.Graph(id="distance_graph"))
+                ),
+                dbc.Toast(
+                    [html.P("Dataframe is empty. Clustergram cannot be calculated.", className="mb-0")],
+                    id="dataframe-empty-toast",
+                    header="Error",
+                    duration=4000,
+                    is_open=False,
+                    icon="danger",
+                    style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+                ),
+            ],
+            style={'margin-top': '20px'}
+        )
+
+    def confidence_ellipse(self, x, y, n_std=1.96, size=100):
         """
             Get the covariance confidence ellipse of *x* and *y*.
             Parameters
@@ -1158,10 +1169,10 @@ class FeatureCloudVisualization:
         path += ' Z'
         return path
 
-    def get_specs_for_matrix(rows, cols, use_pie_charts, clustering_field):
+    def get_specs_for_matrix(self, rows, cols, use_pie_charts, clustering_field):
         specs = []
         subplot_titles = []
-        nr_of_confounding_factors = 0 if len(CONFOUNDING_META) == 0 else len(CONFOUNDING_META.index)
+        nr_of_confounding_factors = 0 if len(self.confounding_meta) == 0 else len(self.confounding_meta.index)
         for i in range(1, rows + 1):
             current_specs_row = []
             if i == 1:
@@ -1177,32 +1188,34 @@ class FeatureCloudVisualization:
                     title = ''
                     if rows != i:
                         current_specs_row.append(
-                            {'type': 'pie' if CONFOUNDING_META.iloc[j][
+                            {'type': 'pie' if self.confounding_meta.iloc[j][
                                                   'data_type'] == 'discrete' and use_pie_charts else 'xy'})
-                        if (len(K_VALUES) > 1 and clustering_field == 'cluster') or clustering_field == 'client_id':
-                            title = f'{clustering_field.capitalize()} {i - cols}: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
+                        if (len(
+                                self.k_values) > 1 and clustering_field == 'cluster') or clustering_field == 'client_id':
+                            title = f'{clustering_field.capitalize()} {i - cols}: {self.confounding_meta.iloc[j]["name"].capitalize()}'
                         else:
                             title = ''
                     else:
                         current_specs_row.append({'type': 'xy'})
-                        if (len(K_VALUES) > 1 and clustering_field == 'cluster') or clustering_field == 'client_id':
-                            title = f'All {clustering_field}s: {CONFOUNDING_META.iloc[j]["name"].capitalize()}'
+                        if (len(
+                                self.k_values) > 1 and clustering_field == 'cluster') or clustering_field == 'client_id':
+                            title = f'All {clustering_field}s: {self.confounding_meta.iloc[j]["name"].capitalize()}'
                         else:
-                            title = CONFOUNDING_META.iloc[j]["name"].capitalize()
+                            title = self.confounding_meta.iloc[j]["name"].capitalize()
                     subplot_titles.append(title)
             specs.append(current_specs_row)
         return specs, subplot_titles
 
-    def get_confounding_factors_filter(id_pre_tag):
+    def get_confounding_factors_filter(self, id_pre_tag):
         html_elem_list = []
-        if len(CONFOUNDING_META) == 0:
+        if len(self.confounding_meta) == 0:
             return html_elem_list
-        confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
-        confounding_length = len(CONFOUNDING_META.index)
-        confounding_base_length = len(CONFOUNDING_META)
+        confounding_df = self.get_df_by_k_value(self.k_values[0], self.dataframes_by_k_value)
+        confounding_length = len(self.confounding_meta.index)
+        confounding_base_length = len(self.confounding_meta)
         confounding_selector_options = []
         for j in range(0, confounding_base_length):
-            confounding_selector_options.append(CONFOUNDING_META.iloc[j]['name'].capitalize())
+            confounding_selector_options.append(self.confounding_meta.iloc[j]['name'].capitalize())
 
         html_elem_list.append(
             dbc.Row(
@@ -1213,8 +1226,8 @@ class FeatureCloudVisualization:
             )
         )
         for j in range(0, confounding_length):
-            col = CONFOUNDING_META.iloc[j]["name"]
-            data_type = CONFOUNDING_META.iloc[j]['data_type']
+            col = self.confounding_meta.iloc[j]["name"]
+            data_type = self.confounding_meta.iloc[j]['data_type']
             if data_type == 'continuous':
                 # add range slider
                 col_min = confounding_df[col].min()
@@ -1265,7 +1278,7 @@ class FeatureCloudVisualization:
                 )
         return html_elem_list
 
-    def get_cluster_values_list(df):
+    def get_cluster_values_list(self, df):
         cluster_values = df.cluster.unique()
         cluster_values_list = []
         for i in cluster_values:
@@ -1273,7 +1286,7 @@ class FeatureCloudVisualization:
 
         return cluster_values_list
 
-    def get_client_values_list(df):
+    def get_client_values_list(self, df):
         client_values = df.client_id.unique()
         client_values_list = []
         for i in client_values:
@@ -1281,58 +1294,38 @@ class FeatureCloudVisualization:
 
         return client_values_list
 
-    def get_df_by_k_value(k_value, base_obj):
+    def get_df_by_k_value(self, k_value, base_obj):
         for k_obj in base_obj:
             if k_obj['k'] == k_value:
                 return k_obj['df']
         return []
 
-    def get_k_filter(id_post_tag):
+    def get_k_filter(self, id_post_tag):
         disable_select = False
-        if len(K_VALUES) == 1:
+        if len(self.k_values) == 1:
             disable_select = True
         return [
             html.Span('K', style={'float': 'left', 'margin-top': '5px'}),
             html.Span(
-                dcc.Dropdown(K_VALUES, K_VALUES[0], id=f'k-filter-{id_post_tag}', className='fc-dropdown',
+                dcc.Dropdown(self.k_values, self.k_values[0], id=f'k-filter-{id_post_tag}', className='fc-dropdown',
                              disabled=disable_select, clearable=False, style={'float': 'left', 'margin-right': '15%'})),
         ]
 
-    def get_cluster_values_filter(id_post_tag):
-        confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
-        cluster_values_list = get_cluster_values_list(confounding_df)
+    def get_cluster_values_filter(self, id_post_tag):
+        confounding_df = self.get_df_by_k_value(self.k_values[0], self.dataframes_by_k_value)
+        cluster_values_list = self.get_cluster_values_list(confounding_df)
         style = {}
-        if len(K_VALUES) == 1:
+        if len(self.k_values) == 1:
             style = {'display': 'none'}
         return html.Span(
             dcc.Checklist(cluster_values_list, cluster_values_list, style=style,
                           inline=True, id=f'cluster-values-checklist-{id_post_tag}', className="fc-checklist"),
         )
 
-    def get_client_values_filter(id_post_tag):
-        confounding_df = get_df_by_k_value(K_VALUES[0], DATAFRAMES_BY_K_VALUE)
-        cluster_values_list = get_client_values_list(confounding_df)
+    def get_client_values_filter(self, id_post_tag):
+        confounding_df = self.get_df_by_k_value(self.k_values[0], self.dataframes_by_k_value)
+        cluster_values_list = self.get_client_values_list(confounding_df)
         return html.Span(
             dcc.Checklist(cluster_values_list, cluster_values_list,
                           inline=True, id=f'client-values-checklist-{id_post_tag}', className="fc-checklist"),
         )
-
-    def start(env, path_prefix):
-        def run_fc():
-            dash.run_server(debug=False, port=8050)
-
-        def run_native():
-            dash.run_server(debug=True, port=8050)
-
-        setup(env)
-        assemble_dataframes()
-        dash = create_dash(path_prefix)
-
-        if env == 'fc':
-            dash.run_server(debug=False, port=8050)
-            # process = multiprocessing.Process(target=run_fc)
-            # process.start()
-        else:
-            dash.run_server(debug=True, port=8050)
-            # process = multiprocessing.Process(target=run_native)
-            # process.start()

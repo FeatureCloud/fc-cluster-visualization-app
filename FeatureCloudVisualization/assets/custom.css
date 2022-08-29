@@ -1,0 +1,45 @@
+.fc-checklist {
+    margin-top: 10px;
+}
+
+.fc-checklist label, .fc-checklist input{
+    margin-right: 5px;
+}
+
+.fc-dropdown {
+    margin-left: 20px;
+    width: 60px;
+}
+
+.confounding-factors-filter-ct {
+    margin-top: 10px;
+}
+
+.confounders-scatter {
+    width: 150vh;
+    height: 100vh;
+    /*height: 190vh;*/
+    min-width: 860px;
+}
+.fc-header {
+    text-align: center;
+}
+
+#btn-download, #download-inverse-selection {
+    float: left;
+}
+
+#view-as-diagram-switch label, #use-pie-charts-switch label, #cluster-client-switch label {
+    margin-bottom: 6px;
+    font-size: inherit;
+}
+
+#client-label {
+    margin-top: 8px;
+    float: left;
+    font-size: inherit;
+}
+
+.help-ct img {
+    max-width: 100%;
+}

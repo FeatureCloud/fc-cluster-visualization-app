@@ -1,0 +1,17 @@
+include assets/fonts/source-sans-pro-v21-latin-300.woff
+include assets/fonts/source-sans-pro-v21-latin-300.woff2
+include assets/fonts/source-sans-pro-v21-latin-700.woff
+include assets/fonts/source-sans-pro-v21-latin-700.woff2
+include assets/fonts/source-sans-pro-v21-latin-regular.woff
+include assets/fonts/source-sans-pro-v21-latin-regular.woff2
+include assets/clustering-quality.png
+include assets/confounders-1.png
+include assets/confounders-2.png
+include assets/confounders-3.png
+include assets/cosmo-bootstrap.min.css
+include assets/custom.css
+include assets/data.zip
+include assets/distances.png
+include assets/favicon.ico
+include assets/scree-plot.png
+include assets/volcano-plot.png

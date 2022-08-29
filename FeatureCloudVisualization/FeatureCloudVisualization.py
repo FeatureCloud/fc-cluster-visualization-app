@@ -43,7 +43,7 @@ class FeatureCloudVisualization:
         # Configurable paths for data files
         self.local_data_path = ''
         self.confounding_data_path = ''
-        self.confounding_meta_PATH = ''
+        self.confounding_meta_path = ''
         self.distance_matrix_path = ''
         self.variance_explained_path = ''
         self.k_values_clustering_result_dir = ''
@@ -85,13 +85,13 @@ class FeatureCloudVisualization:
         self.delimiter = ';'
         self.local_data_path = f'{self.data_dir}/localData.csv'
         self.distance_matrix_path = f'{self.data_dir}/distanceMatrix.csv'
-        self.confounding_meta_PATH = f'{self.data_dir}/confoundingData.meta'
+        self.confounding_meta_path = f'{self.data_dir}/confoundingData.meta'
         self.confounding_data_path = f'{self.data_dir}/confoundingData.csv'
         self.variance_explained_path = f'{self.data_dir}/variance_explained.csv'
         self.k_values_clustering_result_dir = f'{self.data_dir}/results'
         self.k_values_clustering_file_name = 'clustering.csv'
         self.k_values_silhouette_file_name = 'silhouette.csv'
-        self.volcano_data_path = f'{self.data_dir}/volcano.csv'
+        self.volcano_data_path = f'{self.data_dir}/volcano_data.csv'
         self.download_dir = f'{self.output_dir}/downloads'
 
         if self.env == 'fc':
@@ -127,10 +127,10 @@ class FeatureCloudVisualization:
                             self.distance_matrix_path = config['distance-matrix-path']
                     if 'confounding-meta-path' in config:
                         if self.env == 'fc':
-                            self.confounding_meta_PATH = os.path.join(self.base_dir_fc_env,
+                            self.confounding_meta_path = os.path.join(self.base_dir_fc_env,
                                                                       config['confounding-meta-path'])
                         else:
-                            self.confounding_meta_PATH = config['confounding-meta-path']
+                            self.confounding_meta_path = config['confounding-meta-path']
                     if 'confounding-data-path' in config:
                         if self.env == 'fc':
                             self.confounding_data_path = os.path.join(self.base_dir_fc_env,
@@ -154,7 +154,11 @@ class FeatureCloudVisualization:
                     if 'k-values-silhouette-file-name' in config:
                         self.k_values_silhouette_file_name = config['k-values-silhouette-file-name']
                     if 'volcano-data-path' in config:
-                        self.volcano_data_path = config['volcano-data-path']
+                        if self.env == 'fc':
+                            self.volcano_data_path = os.path.join(self.base_dir_fc_env,
+                                                             config['volcano-data-path'])
+                        else:
+                            self.volcano_data_path = config['volcano-data-path']
                     if 'download-dir' in config:
                         if self.env == 'fc':
                             self.download_dir = os.path.join(self.output_dir, config['download-dir'])
@@ -167,31 +171,32 @@ class FeatureCloudVisualization:
             os.makedirs(self.download_dir, exist_ok=True)
 
         print("Working with the following config data:")
-        print(f'DELMITIER={self.delimiter}')
-        print(f'DATA-DIR={self.data_dir}')
-        print(f'self.local_data_path={self.local_data_path}')
-        print(f'self.distance_matrix_path={self.distance_matrix_path}')
-        print(f'self.confounding_meta_PATH={self.confounding_meta_PATH}')
-        print(f'self.confounding_data_path={self.confounding_data_path}')
-        print(f'self.variance_explained_path={self.variance_explained_path}')
-        print(f'self.k_values_clustering_result_dir={self.k_values_clustering_result_dir}')
-        print(f'self.k_values_clustering_file_name={self.k_values_clustering_file_name}')
-        print(f'self.k_values_silhouette_file_name={self.k_values_silhouette_file_name}')
-        print(f'self.volcano_data_path={self.volcano_data_path}')
-        print(f'self.download_dir={self.download_dir}')
+        print(f'delimiter={self.delimiter}')
+        print(f'data-dir={self.data_dir}')
+        print(f'local_data_path={self.local_data_path}')
+        print(f'distance_matrix_path={self.distance_matrix_path}')
+        print(f'confounding_meta_path={self.confounding_meta_path}')
+        print(f'confounding_data_path={self.confounding_data_path}')
+        print(f'variance_explained_path={self.variance_explained_path}')
+        print(f'k_values_clustering_result_dir={self.k_values_clustering_result_dir}')
+        print(f'k_values_clustering_file_name={self.k_values_clustering_file_name}')
+        print(f'k_values_silhouette_file_name={self.k_values_silhouette_file_name}')
+        print(f'volcano_data_path={self.volcano_data_path}')
+        print(f'download_dir={self.download_dir}')
+        print(f'Current directory is: {os.getcwd()}')
 
     def assemble_dataframes(self):
         self.dataframes_by_k_value = []
         if not os.path.isdir(self.data_dir):
             self.data_errors += "Data folder is missing."
 
+        local_data_present = True
         try:
             base_df = pd.read_csv(self.local_data_path, delimiter=self.delimiter, skiprows=0)
             nr_of_samples = len(base_df.index)
         except IOError:
-            print(f'Current directory is: {os.getcwd()}')
             print(f'Did not find local data file in: {self.local_data_path}')
-            self.data_errors += "Local data is missing"
+            local_data_present = False
 
         try:
             self.volcano_df = pd.read_csv(self.volcano_data_path, delimiter=self.delimiter, skiprows=0)
@@ -204,7 +209,9 @@ class FeatureCloudVisualization:
         except pd.errors.EmptyDataError:
             self.data_errors += f'Error: {self.volcano_data_path} is empty.\n'
 
-        if len(self.dataframes_by_k_value) == 0:
+        if not local_data_present:
+            if len(self.volcano_df) == 0:
+                self.data_errors += "Local data is missing"
             return
 
         try:
@@ -218,7 +225,7 @@ class FeatureCloudVisualization:
             self.data_errors += "Error: Distance matrix is empty.\n"
 
         try:
-            self.confounding_meta = pd.read_csv(self.confounding_meta_PATH, delimiter=self.delimiter, skiprows=0)
+            self.confounding_meta = pd.read_csv(self.confounding_meta_path, delimiter=self.delimiter, skiprows=0)
             confounding_data = pd.read_csv(self.confounding_data_path, delimiter=self.delimiter, skiprows=0)
             if len(self.confounding_meta) > self.max_nr_of_confounding_factors_to_display:
                 self.confounding_meta = self.confounding_meta.head(self.max_nr_of_confounding_factors_to_display)
@@ -330,8 +337,9 @@ class FeatureCloudVisualization:
 
             app.layout = html.Div([
                 html.H2('FeatureCloud Cluster Visualization App', className='fc-header'),
-                dbc.Button('Finished', id='btn-finished', color='primary', className='me-1',
-                           style=finished_button_style, title='Finished visualization, proceed to next step'),
+                dbc.Button('Finish', id='btn-finished', color='primary', className='me-1',
+                           style=finished_button_style,
+                           title='Finished visualization, stop app and proceed to next step if any.'),
                 dbc.Toast(
                     [html.P('Visualization finished. Will proceed to next step or finish the workflow.',
                             className="mb-0")],
@@ -905,6 +913,9 @@ class FeatureCloudVisualization:
                 genomewideline_value=genomewideline,
                 effect_size_line=effects
             )
+            # .update_traces(mode='markers+text', selector=dict(marker_color='red'))\
+            # .update_traces(text=hover_text, selector=dict(marker_color='red')) \
+            # .update_traces(textposition='top center', selector=dict(marker_color='red'))
             self.save_fig_as_image(fig)
             return fig
 

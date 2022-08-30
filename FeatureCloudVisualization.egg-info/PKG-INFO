@@ -1,11 +1,11 @@
 Metadata-Version: 2.1
 Name: FeatureCloudVisualization
-Version: 0.0.1
+Version: 0.0.2
 Summary: FeatureCloud Visualization
 Home-page: https://github.com/FeatureCloud/fc-cluster-visualization-app
 Author: FeatureCloud
 Author-email: balazs.orban@gnd.ro
-License: UNKNOWN
+License: MIT
 Project-URL: Bug Tracker, https://github.com/FeatureCloud/fc-cluster-visualization-app/issues
 Description: # Featurecloud Cluster Visualization app
         This is an interactive cluster visualization app implemented in Dash and Plotly.

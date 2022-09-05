@@ -1,7 +1,0 @@
-README.md
-setup.py
-FeatureCloudVisualization.egg-info/PKG-INFO
-FeatureCloudVisualization.egg-info/SOURCES.txt
-FeatureCloudVisualization.egg-info/dependency_links.txt
-FeatureCloudVisualization.egg-info/requires.txt
-FeatureCloudVisualization.egg-info/top_level.txt

@@ -3,8 +3,8 @@ import setuptools
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-setuptools.setup(name="FeatureCloudVisualization",
-                 version="0.0.2",
+setuptools.setup(name="fcvisualization",
+                 version="0.0.0.1",
                  license='MIT',
                  author="FeatureCloud",
                  author_email="balazs.orban@gnd.ro",
@@ -19,10 +19,10 @@ setuptools.setup(name="FeatureCloudVisualization",
                      "Programming Language :: Python :: 3",
                      "Operating System :: OS Independent",
                  ],
-                 packages=setuptools.find_packages(include=['featurecloudvisualization', 'featurecloudvisualization.*']),
+                 packages=setuptools.find_packages(include=['fcvisualization', 'fcvisualization.*']),
                  python_requires=">=3.7",
                  include_package_data=True,
-                 package_data={'': ['FeatureCloudVisualization/*']},
+                 package_data={'': ['./fcvisualization/*']},
                  install_requires=['attrs==21.4.0', 'biopython==1.79', 'Brotli==1.0.9', 'certifi==2021.10.8',
                                    'charset-normalizer==2.0.12', 'click==8.0.4', 'colour==0.1.5', 'cycler==0.11.0',
                                    'dash==2.2.0', 'dash-bio==1.0.1', 'dash-bootstrap-components==1.0.3',

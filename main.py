@@ -4,7 +4,7 @@ from FeatureCloud.app.api.http_ctrl import api_server
 from FeatureCloud.app.engine.app import app
 from bottle import Bottle
 
-import FeatureCloudVisualization
+import fcvisualization
 
 """
 Normally the app is started within FeatureCloud environment ('fc'),
@@ -27,5 +27,5 @@ if __name__ == '__main__':
     if env == 'fc':
         start_app()
     else:
-        fc_visualization = FeatureCloudVisualization.FeatureCloudVisualization()
+        fc_visualization = fcvisualization.fcvisualization()
         fc_visualization.start(env, None)

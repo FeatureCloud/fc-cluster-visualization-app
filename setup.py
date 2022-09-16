@@ -35,6 +35,6 @@ setuptools.setup(name="fcvisualization",
                                    'plotly', 'pyparsing', 'pyrsistent', 'python-dateutil',
                                    'pytz', 'requests', 'scikit-learn', 'scipy',
                                    'six', 'tenacity', 'threadpoolctl', 'tqdm',
-                                   'urllib3', 'yellowbrick']
+                                   'urllib3', 'Werkzeug', 'yellowbrick']
 
                  )

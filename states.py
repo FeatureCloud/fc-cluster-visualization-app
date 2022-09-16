@@ -38,7 +38,6 @@ class PlotState(AppState):
         self.register_transition('terminal')
 
     def run(self) -> str:
-        # @TODO implement this using threads that can intercommunicate with each other: https://github.com/plotly/dash-core-components/issues/952
         # This will be needed when other states intervene
         if TERMINAL is True:
             print('plot is finished')

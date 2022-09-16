@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(name="fcvisualization",
-                 version="0.0.0.1",
+                 version="0.0.0.2",
                  license='MIT',
                  author="FeatureCloud",
                  author_email="balazs.orban@gnd.ro",

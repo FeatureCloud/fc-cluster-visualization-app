@@ -45,6 +45,5 @@ tenacity==8.0.1
 threadpoolctl==3.1.0
 tqdm==4.64.0
 urllib3==1.26.9
-Werkzeug==2.0.3
 yellowbrick==1.4
 featurecloud

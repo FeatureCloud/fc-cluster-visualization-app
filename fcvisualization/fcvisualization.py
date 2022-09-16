@@ -402,12 +402,6 @@ class fcvisualization:
             if n_clicks is not None and n_clicks > 0:
                 if self.callback_fn_terminal_state is not None:
                     self.callback_fn_terminal_state()
-                else:
-                    # Stopping Dash
-                    func = request.environ.get('werkzeug.server.shutdown')
-                    if func is None:
-                        raise RuntimeError('Not running with the Werkzeug Server')
-                    func()
                 return True
             return False
 

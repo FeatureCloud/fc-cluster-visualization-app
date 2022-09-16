@@ -3,10 +3,12 @@ import os
 from FeatureCloud.app.engine.app import AppState, app_state
 
 import fcvisualization
+from threading import Thread
 
 TERMINAL = False
 
-def callbackFnTerminalState():
+
+def callback_fn_terminal_state():
     global TERMINAL
     print("Transition to terminal state triggered...")
     TERMINAL = True
@@ -22,8 +24,9 @@ class InitialState(AppState):
         path_prefix = os.getenv("PATH_PREFIX")
         print("PATH_PREFIX environment variable: ", path_prefix)
         print('Plot start...')
-        fc_visualization = fcvisualization()
-        fc_visualization.start('fc', path_prefix, callbackFnTerminalState)
+        fc_visualization = fcvisualization.fcvisualization()
+        thread_vis = Thread(target=fc_visualization.start, args=('fc', path_prefix, callback_fn_terminal_state))
+        thread_vis.start()
         return 'plot'
 
 
@@ -31,6 +34,7 @@ class InitialState(AppState):
 class PlotState(AppState):
     def register(self):
         print('register transitions from plot state to terminal')
+        self.register_transition('plot')
         self.register_transition('terminal')
 
     def run(self) -> str:
@@ -39,4 +43,5 @@ class PlotState(AppState):
         if TERMINAL is True:
             print('plot is finished')
             return 'terminal'
+        print('plot is running')
         return 'plot'

@@ -56,12 +56,12 @@ class fcvisualization:
 
     def start(self, env, path_prefix, callback_fn):
         def run_fc():
-            self.callback_fn_terminal_state = callback_fn
             dash.run_server(debug=False, port=8050)
 
         def run_native():
             dash.run_server(debug=True, port=8050)
 
+        self.callback_fn_terminal_state = callback_fn
         self.setup(env)
         self.assemble_dataframes()
         dash = self.create_dash(path_prefix)

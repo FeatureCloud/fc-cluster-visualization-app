@@ -28,4 +28,4 @@ if __name__ == '__main__':
         start_app()
     else:
         fc_visualization = fcvisualization.fcvisualization()
-        fc_visualization.start(env, None)
+        fc_visualization.start(env, None, None)

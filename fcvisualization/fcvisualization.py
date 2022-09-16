@@ -22,6 +22,7 @@ from plotly.tools import DEFAULT_PLOTLY_COLORS
 class fcvisualization:
 
     def __init__(self):
+        self.callback_fn_terminal_state = None
         self.k_value_distance = 0
         self.distance_df = []
         self.confounding_meta = []
@@ -53,8 +54,9 @@ class fcvisualization:
         self.download_dir = ''
         self.env = ''
 
-    def start(self, env, path_prefix):
+    def start(self, env, path_prefix, callback_fn):
         def run_fc():
+            self.callback_fn_terminal_state = callback_fn
             dash.run_server(debug=False, port=8050)
 
         def run_native():
@@ -170,7 +172,7 @@ class fcvisualization:
         if not os.path.isdir(self.download_dir):
             os.makedirs(self.download_dir, exist_ok=True)
 
-        print("Working with the following config data:")
+        print("Working with the following configuration:")
         print(f'delimiter={self.delimiter}')
         print(f'data-dir={self.data_dir}')
         print(f'local_data_path={self.local_data_path}')
@@ -398,11 +400,14 @@ class fcvisualization:
         )
         def set_finished(n_clicks):
             if n_clicks is not None and n_clicks > 0:
-                # Stopping Dash
-                func = request.environ.get('werkzeug.server.shutdown')
-                if func is None:
-                    raise RuntimeError('Not running with the Werkzeug Server')
-                func()
+                if self.callback_fn_terminal_state is not None:
+                    self.callback_fn_terminal_state()
+                else:
+                    # Stopping Dash
+                    func = request.environ.get('werkzeug.server.shutdown')
+                    if func is None:
+                        raise RuntimeError('Not running with the Werkzeug Server')
+                    func()
                 return True
             return False
 

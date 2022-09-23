@@ -1,11 +1,15 @@
+import multiprocessing
 import os
+import time
 
 from FeatureCloud.app.engine.app import AppState, app_state
 
 import fcvisualization
-from threading import Thread
+import plotly.express as px
 
 TERMINAL = False
+fc_visualization = fcvisualization.fcvisualization()
+extra_visualization_content = []
 
 
 def callback_fn_terminal_state():
@@ -21,12 +25,31 @@ class InitialState(AppState):
         self.register_transition('plot')
 
     def run(self) -> str:
+        global extra_visualization_content
         path_prefix = os.getenv("PATH_PREFIX")
         print("PATH_PREFIX environment variable: ", path_prefix)
         print('Plot start...')
-        fc_visualization = fcvisualization.fcvisualization()
-        thread_vis = Thread(target=fc_visualization.start, args=('fc', path_prefix, callback_fn_terminal_state))
-        thread_vis.start()
+        process = multiprocessing.Process(target=fc_visualization.start, args=('fc', path_prefix, callback_fn_terminal_state, []))
+        process.start()
+        time.sleep(15)
+        print("Stopping")
+        process.terminate()
+        print("Starting new diagram")
+        df = px.data.iris()  # iris is a pandas DataFrame
+        fig = px.scatter(df, x="sepal_width", y="sepal_length")
+        fig2 = px.scatter(df, x="sepal_length", y="sepal_width")
+        extra_visualization_content.append({
+            "title": "My Diagram",
+            "fig": fig,
+        })
+        extra_visualization_content.append({
+            "title": "My Diagram 2",
+            "fig": fig2,
+        })
+        process = multiprocessing.Process(target=fc_visualization.start,
+                                          args=('fc', path_prefix, callback_fn_terminal_state, extra_visualization_content))
+        process.start()
+
         return 'plot'
 
 

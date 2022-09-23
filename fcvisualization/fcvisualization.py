@@ -1,6 +1,7 @@
 import math
 import os
 import shutil
+import uuid
 
 import dash_bio
 import yaml
@@ -14,7 +15,6 @@ import plotly.graph_objects as go
 import pandas as pd
 
 import numpy as np
-from flask import request
 from plotly.subplots import make_subplots
 from plotly.tools import DEFAULT_PLOTLY_COLORS
 
@@ -53,8 +53,9 @@ class fcvisualization:
         self.volcano_data_path = ''
         self.download_dir = ''
         self.env = ''
+        self.extra_content = []
 
-    def start(self, env, path_prefix, callback_fn):
+    def start(self, env, path_prefix, callback_fn, extra_content=[]):
         def run_fc():
             dash.run_server(debug=False, port=8050)
 
@@ -62,7 +63,7 @@ class fcvisualization:
             dash.run_server(debug=True, port=8050)
 
         self.callback_fn_terminal_state = callback_fn
-        self.setup(env)
+        self.setup(env, extra_content)
         self.assemble_dataframes()
         dash = self.create_dash(path_prefix)
 
@@ -75,8 +76,17 @@ class fcvisualization:
             # process = multiprocessing.Process(target=run_native)
             # process.start()
 
-    def setup(self, env):
+    def setup(self, env, extra_content):
         self.env = env
+        if len(extra_content) > 0:
+            for content in extra_content:
+                print("Got extra content!")
+                self.extra_content.append({
+                    'title': content['title'],
+                    'hash_id': uuid.uuid4().hex,
+                    'fig': content['fig']
+                })
+
         self.data_dir = "./data"
         self.output_dir = f'{self.data_dir}/output'
 
@@ -337,6 +347,20 @@ class fcvisualization:
             finished_button_style = {'display': 'none'} if self.env != 'fc' else {'float': 'right'}
             tab_value = 'tab-confounders' if len(self.dataframes_by_k_value) > 0 else 'tab-volcano-plot'
 
+            # Handle tabs
+            tab_children = [
+                dcc.Tab(label='Confounders', value='tab-confounders', style=confounding_style),
+                dcc.Tab(label='Distances', value='tab-distances', style=distance_style),
+                dcc.Tab(label='Clustering Quality', value='tab-clustering-quality', style=cluster_quality_style),
+                dcc.Tab(label='Scree plot', value='tab-scree-plot', style=scree_plot_style),
+                dcc.Tab(label='Volcano plot', value='tab-volcano-plot', style=volcano_plot_style),
+            ]
+            if len(self.extra_content) > 0:
+                for tab_ct in self.extra_content:
+                    tab_children.append(dcc.Tab(label=tab_ct['title'], value=tab_ct['hash_id']))
+
+            tab_children.append(dcc.Tab(label='Help', value='tab-help'))
+
             app.layout = html.Div([
                 html.H2('FeatureCloud Cluster Visualization App', className='fc-header'),
                 dbc.Button('Finish', id='btn-finished', color='primary', className='me-1',
@@ -351,14 +375,7 @@ class fcvisualization:
                     is_open=False,
                     style={"position": "fixed", "top": 66, "right": 10, "width": 350},
                 ),
-                dcc.Tabs(id="tabs-ct", value=tab_value, children=[
-                    dcc.Tab(label='Confounders', value='tab-confounders', style=confounding_style),
-                    dcc.Tab(label='Distances', value='tab-distances', style=distance_style),
-                    dcc.Tab(label='Clustering Quality', value='tab-clustering-quality', style=cluster_quality_style),
-                    dcc.Tab(label='Scree plot', value='tab-scree-plot', style=scree_plot_style),
-                    dcc.Tab(label='Volcano plot', value='tab-volcano-plot', style=volcano_plot_style),
-                    dcc.Tab(label='Help', value='tab-help'),
-                ]),
+                dcc.Tabs(id="tabs-ct", value=tab_value, children=tab_children),
                 html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'}),
                 dbc.Toast(
                     [html.P(self.data_errors, className="mb-0")],
@@ -393,6 +410,22 @@ class fcvisualization:
                 return self.render_volcano_plot(), show_toast
             elif tab == 'tab-help':
                 return self.render_help(), show_toast
+            else:
+                return render_extra_content(tab), show_toast
+
+
+        def render_extra_content(hash_id):
+            for diagram in self.extra_content:
+                if hash_id == diagram['hash_id']:
+                    self.save_fig_as_image(diagram['fig'])
+                    return html.Div([
+                        self.get_download_button(),
+                        dbc.Row(
+                            dcc.Graph(
+                                figure=diagram['fig']
+                            )
+                        )],
+                        style={'margin-top': '25px'})
 
         @app.callback(
             Output('toaster-visualization-finished', 'is_open'),
@@ -400,7 +433,7 @@ class fcvisualization:
         )
         def set_finished(n_clicks):
             if n_clicks is not None and n_clicks > 0:
-                if self.callback_fn_terminal_state is not None:
+                if self.callback_fn_terminal_state is not None and callable(self.callback_fn_terminal_state):
                     self.callback_fn_terminal_state()
                 return True
             return False

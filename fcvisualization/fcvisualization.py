@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 import pandas as pd
 
 import numpy as np
+from dash.exceptions import PreventUpdate
 from plotly.subplots import make_subplots
 from plotly.tools import DEFAULT_PLOTLY_COLORS
 
@@ -64,7 +65,6 @@ class fcvisualization:
 
         self.callback_fn_terminal_state = callback_fn
         self.setup(env, extra_content)
-        self.assemble_dataframes()
         dash = self.create_dash(path_prefix)
 
         if env == 'fc':
@@ -80,7 +80,7 @@ class fcvisualization:
         self.env = env
         if len(extra_content) > 0:
             for content in extra_content:
-                print("Got extra content!")
+                print("Got extra content in setup phase!")
                 self.extra_content.append({
                     'title': content['title'],
                     'hash_id': uuid.uuid4().hex,
@@ -198,6 +198,7 @@ class fcvisualization:
         print(f'Current directory is: {os.getcwd()}')
 
     def assemble_dataframes(self):
+        print('Assembling dataframes')
         self.dataframes_by_k_value = []
         if not os.path.isdir(self.data_dir):
             self.data_errors += "Data folder is missing."
@@ -222,8 +223,8 @@ class fcvisualization:
             self.data_errors += f'Error: {self.volcano_data_path} is empty.\n'
 
         if not local_data_present:
-            if len(self.volcano_df) == 0:
-                self.data_errors += "Local data is missing"
+            if len(self.volcano_df) == 0 and len(self.extra_content) == 0:
+                self.data_errors = "No data found"
             return
 
         try:
@@ -318,75 +319,90 @@ class fcvisualization:
                    requests_pathname_prefix=path_prefix,
                    title='FeatureCloud Cluster Visualization App',
                    suppress_callback_exceptions=True)
-        if len(self.dataframes_by_k_value) == 0 and len(self.volcano_df) == 0:
-            f = open('README.md', 'r')
-            app.layout = html.Div([
-                dbc.Row(
-                    dbc.Col(width=8, children=[
-                        dbc.Toast(
-                            [html.P('Local data cannot be found.', className="mb-0")],
-                            id="data-validation-toast",
-                            header="Error",
-                            duration=10000,
-                            is_open=True,
-                            icon="danger",
-                            style={"position": "fixed", "top": 66, "right": 10, "width": 350},
-                        ),
-                        dcc.Markdown(f.read())
-                    ]),
-                    justify='center'
-                )
-            ],
-                className='help-ct')
-        else:
-            confounding_style = {'display': 'none'} if len(self.dataframes_by_k_value) == 0 else {}
-            distance_style = {'display': 'none'} if len(self.distance_df) == 0 else {}
-            scree_plot_style = {'display': 'none'} if len(self.scree_plot) == 0 else {}
-            cluster_quality_style = {'display': 'none'} if len(self.k_values) <= 1 else {}
-            volcano_plot_style = {'display': 'none'} if len(self.volcano_df) <= 1 else {}
-            finished_button_style = {'display': 'none'} if self.env != 'fc' else {'float': 'right'}
-            tab_value = 'tab-confounders' if len(self.dataframes_by_k_value) > 0 else 'tab-volcano-plot'
 
-            # Handle tabs
-            tab_children = [
-                dcc.Tab(label='Confounders', value='tab-confounders', style=confounding_style),
-                dcc.Tab(label='Distances', value='tab-distances', style=distance_style),
-                dcc.Tab(label='Clustering Quality', value='tab-clustering-quality', style=cluster_quality_style),
-                dcc.Tab(label='Scree plot', value='tab-scree-plot', style=scree_plot_style),
-                dcc.Tab(label='Volcano plot', value='tab-volcano-plot', style=volcano_plot_style),
-            ]
-            if len(self.extra_content) > 0:
-                for tab_ct in self.extra_content:
-                    tab_children.append(dcc.Tab(label=tab_ct['title'], value=tab_ct['hash_id']))
+        def serve_layout():
+            self.assemble_dataframes()
+            if len(self.dataframes_by_k_value) == 0 and len(self.volcano_df) == 0 and len(self.extra_content) ==0:
+                f = open('README.md', 'r')
+                return html.Div([
+                    dbc.Row(
+                        dbc.Col(width=8, children=[
+                            dbc.Toast(
+                                [html.P('No data to display.', className="mb-0")],
+                                id="data-validation-toast",
+                                header="Error",
+                                duration=10000,
+                                is_open=True,
+                                icon="danger",
+                                style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+                            ),
+                            dcc.Markdown(f.read())
+                        ]),
+                        justify='center'
+                    )
+                ],
+                    className='help-ct')
+            else:
+                confounding_style = {'display': 'none'} if len(self.dataframes_by_k_value) == 0 else {}
+                distance_style = {'display': 'none'} if len(self.distance_df) == 0 else {}
+                scree_plot_style = {'display': 'none'} if len(self.scree_plot) == 0 else {}
+                cluster_quality_style = {'display': 'none'} if len(self.k_values) == 0 else {}
+                volcano_plot_style = {'display': 'none'} if len(self.volcano_df) == 0 else {}
+                finished_button_style = {'display': 'none'} if self.env != 'fc' else {'float': 'right'}
 
-            tab_children.append(dcc.Tab(label='Help', value='tab-help'))
+                # Handle tabs
+                tab_children = [
+                    dcc.Tab(label='Confounders', value='tab-confounders', style=confounding_style),
+                    dcc.Tab(label='Distances', value='tab-distances', style=distance_style),
+                    dcc.Tab(label='Clustering Quality', value='tab-clustering-quality', style=cluster_quality_style),
+                    dcc.Tab(label='Scree plot', value='tab-scree-plot', style=scree_plot_style),
+                    dcc.Tab(label='Volcano plot', value='tab-volcano-plot', style=volcano_plot_style),
+                ]
+                if len(self.extra_content) > 0:
+                    for tab_ct in self.extra_content:
+                        tab_children.append(dcc.Tab(label=tab_ct['title'], value=tab_ct['hash_id']))
 
-            app.layout = html.Div([
-                html.H2('FeatureCloud Cluster Visualization App', className='fc-header'),
-                dbc.Button('Finish', id='btn-finished', color='primary', className='me-1',
-                           style=finished_button_style,
-                           title='Finished visualization, stop app and proceed to next step if any.'),
-                dbc.Toast(
-                    [html.P('Visualization finished. Will proceed to next step or finish the workflow.',
-                            className="mb-0")],
-                    id="toaster-visualization-finished",
-                    header="Visualization",
-                    duration=5000,
-                    is_open=False,
-                    style={"position": "fixed", "top": 66, "right": 10, "width": 350},
-                ),
-                dcc.Tabs(id="tabs-ct", value=tab_value, children=tab_children),
-                html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'}),
-                dbc.Toast(
-                    [html.P(self.data_errors, className="mb-0")],
-                    id="data-validation-toast",
-                    header="Error",
-                    duration=10000,
-                    is_open=False,
-                    icon="danger",
-                    style={"position": "fixed", "top": 66, "right": 10, "width": 350},
-                ),
-            ])
+                tab_children.append(dcc.Tab(label='Help', value='tab-help'))
+                tab_value = 'tab-help'
+                if len(self.dataframes_by_k_value) > 0:
+                    tab_value = 'tab-confounders'
+                elif len(self.volcano_df) > 0:
+                    tab_value = 'tab-volcano-plot'
+                elif len(self.extra_content) > 0:
+                    tab_value = self.extra_content[0]['hash_id']
+                return html.Div([
+                    dcc.Location(id='url', refresh=True),
+                    html.H2('FeatureCloud Cluster Visualization App', id='fc-header', className='fc-header'),
+                    dbc.Button('Reload', id='btn-reload', color='primary', className='me-1',
+                               # style=finished_button_style,
+                               title='Reload application to see new data.'),
+                    dbc.Button('Finish', id='btn-finished', color='primary', className='me-1',
+                               style=finished_button_style,
+                               title='Finished visualization, stop app and proceed to next step if any.'),
+                    dbc.Toast(
+                        [html.P('Visualization finished. Will proceed to next step or finish the workflow.',
+                                className="mb-0")],
+                        id="toaster-visualization-finished",
+                        header="Visualization",
+                        duration=5000,
+                        is_open=False,
+                        style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+                    ),
+                    dcc.Tabs(id="tabs-ct", value=tab_value, children=tab_children),
+                    html.Div(id='tabs-content-ct', style={'width': '75%', 'margin': '0 auto'}),
+                    dbc.Toast(
+                        [html.P(self.data_errors, className="mb-0")],
+                        id="data-validation-toast",
+                        header="Error",
+                        duration=10000,
+                        is_open=False,
+                        icon="danger",
+                        style={"position": "fixed", "top": 66, "right": 10, "width": 350},
+                    ),
+                ])
+
+        app.layout = serve_layout
+
 
         @app.callback(
             Output('tabs-content-ct', 'children'),
@@ -437,6 +453,18 @@ class fcvisualization:
                     self.callback_fn_terminal_state()
                 return True
             return False
+
+        @app.callback(
+            Output("url", "href"),
+            Input('btn-reload', 'n_clicks'),
+            prevent_initial_call=True,
+        )
+        def reload_app(n_clicks):
+            global extra_visualization_content
+            if n_clicks is None:
+                raise PreventUpdate
+            # reloading Dash application from scratch
+            return './'
 
         def render_confounders():
             confounding_df = self.get_df_by_k_value(self.k_values[0], self.dataframes_by_k_value)
@@ -1372,3 +1400,12 @@ class fcvisualization:
             dcc.Checklist(cluster_values_list, cluster_values_list,
                           inline=True, id=f'client-values-checklist-{id_post_tag}', className="fc-checklist"),
         )
+
+    def add_diagram(self, new_content):
+        for content in new_content:
+            print("Got extra content!")
+            self.extra_content.append({
+                'title': content['title'],
+                'hash_id': uuid.uuid4().hex,
+                'fig': content['fig']
+            })

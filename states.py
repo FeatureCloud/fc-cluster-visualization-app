@@ -1,6 +1,7 @@
 import multiprocessing
 import os
 import time
+from threading import Thread
 
 from FeatureCloud.app.engine.app import AppState, app_state
 
@@ -9,7 +10,6 @@ import plotly.express as px
 
 TERMINAL = False
 fc_visualization = fcvisualization.fcvisualization()
-extra_visualization_content = []
 
 
 def callback_fn_terminal_state():
@@ -25,31 +25,28 @@ class InitialState(AppState):
         self.register_transition('plot')
 
     def run(self) -> str:
-        global extra_visualization_content
-        path_prefix = os.getenv("PATH_PREFIX")
-        print("PATH_PREFIX environment variable: ", path_prefix)
-        print('Plot start...')
-        process = multiprocessing.Process(target=fc_visualization.start, args=('fc', path_prefix, callback_fn_terminal_state, []))
-        process.start()
-        time.sleep(15)
-        print("Stopping")
-        process.terminate()
-        print("Starting new diagram")
         df = px.data.iris()  # iris is a pandas DataFrame
         fig = px.scatter(df, x="sepal_width", y="sepal_length")
         fig2 = px.scatter(df, x="sepal_length", y="sepal_width")
-        extra_visualization_content.append({
-            "title": "My Diagram",
-            "fig": fig,
-        })
-        extra_visualization_content.append({
-            "title": "My Diagram 2",
+        extra_visualization_content = [{
+            "title": "Extra diagram",
             "fig": fig2,
-        })
-        process = multiprocessing.Process(target=fc_visualization.start,
-                                          args=('fc', path_prefix, callback_fn_terminal_state, extra_visualization_content))
-        process.start()
-
+        }]
+        path_prefix = os.getenv("PATH_PREFIX")
+        print("PATH_PREFIX environment variable: ", path_prefix)
+        print('Plot start...')
+        thread_vis = Thread(target=fc_visualization.start, args=('fc', path_prefix, callback_fn_terminal_state, extra_visualization_content))
+        thread_vis.start()
+        time.sleep(15)
+        fc_visualization.add_diagram([{
+            "title": "My OUTSIDE Diagram",
+            "fig": fig2,
+        }])
+        time.sleep(10)
+        fc_visualization.add_diagram([{
+            "title": "My OUTSIDE 2",
+            "fig": fig2,
+        }])
         return 'plot'
 
 

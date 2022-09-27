@@ -42,4 +42,4 @@ if __name__ == '__main__':
             "fig": fig,
         })
         fc_visualization = fcvisualization.fcvisualization()
-        fc_visualization.start(env, None, None, [])
+        fc_visualization.start(env, None, None, extra_visualization_content)

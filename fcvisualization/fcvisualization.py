@@ -218,7 +218,7 @@ class fcvisualization:
                 self.data_errors += f'Error: Wrong self.delimiter ({self.delimiter}) or missing column(s) in data set for volcano plot. ' \
                                     f'Required columns are: "EFFECTSIZE", "P", "SNP", "GENE".\n'
         except IOError:
-            self.data_errors += f'Warning: {self.volcano_data_path} does not exist.\n'
+            print(f'Warning: {self.volcano_data_path} does not exist.')
         except pd.errors.EmptyDataError:
             self.data_errors += f'Error: {self.volcano_data_path} is empty.\n'
 
@@ -1403,9 +1403,29 @@ class fcvisualization:
 
     def add_diagram(self, new_content):
         for content in new_content:
-            print("Got extra content!")
+            print(f'Got extra content! TITLE={content["title"]}')
             self.extra_content.append({
                 'title': content['title'],
                 'hash_id': uuid.uuid4().hex,
                 'fig': content['fig']
             })
+        return self.get_hashes_from_extra_content()
+
+    def get_hashes_from_extra_content(self):
+        hashes = []
+        for content in self.extra_content:
+            print(f'Adding {content["title"]} to hashes')
+            hashes.append({
+                'title': content['title'],
+                'hash_id': content['hash_id'],
+            })
+        print(hashes)
+        return hashes
+
+    def update_diagram(self, diagram):
+        for content in self.extra_content:
+            if diagram['hash_id'] == content['hash_id']:
+                print(f'Updating diagram with title: {content["title"]}')
+                content['title'] = diagram['title']
+                content['fig'] = diagram['fig']
+        return self.get_hashes_from_extra_content()

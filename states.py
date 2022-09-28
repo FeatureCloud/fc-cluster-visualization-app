@@ -38,15 +38,27 @@ class InitialState(AppState):
         thread_vis = Thread(target=fc_visualization.start, args=('fc', path_prefix, callback_fn_terminal_state, extra_visualization_content))
         thread_vis.start()
         time.sleep(15)
-        fc_visualization.add_diagram([{
-            "title": "My OUTSIDE Diagram",
+        original_title = "My OUTSIDE Diagram"
+        hashes = fc_visualization.add_diagram([{
+            "title": original_title,
             "fig": fig2,
         }])
+        print(hashes)
         time.sleep(10)
-        fc_visualization.add_diagram([{
+        for diagram in hashes:
+            if diagram['title'] == original_title:
+                print('Update diagram in progress')
+                diagram['title'] = original_title + ' updated'
+                diagram['fig'] = fig
+                hashes = fc_visualization.update_diagram(diagram)
+                print(hashes)
+
+        time.sleep(10)
+        hashes = fc_visualization.add_diagram([{
             "title": "My OUTSIDE 2",
             "fig": fig2,
         }])
+        print(hashes)
         return 'plot'
 
 

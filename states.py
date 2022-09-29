@@ -24,40 +24,11 @@ class InitialState(AppState):
         self.register_transition('plot')
 
     def run(self) -> str:
-        df = px.data.iris()  # iris is a pandas DataFrame
-        fig = px.scatter(df, x="sepal_width", y="sepal_length")
-        fig2 = px.scatter(df, x="sepal_length", y="sepal_width")
-        extra_visualization_content = [{
-            "title": "Extra diagram",
-            "fig": fig2,
-        }]
         path_prefix = os.getenv("PATH_PREFIX")
         print("PATH_PREFIX environment variable: ", path_prefix)
         print('Plot start...')
-        thread_vis = Thread(target=fc_visualization.start, args=('fc', path_prefix, callback_fn_terminal_state, extra_visualization_content))
+        thread_vis = Thread(target=fc_visualization.start, args=('fc', path_prefix, callback_fn_terminal_state))
         thread_vis.start()
-        time.sleep(15)
-        original_title = "My OUTSIDE Diagram"
-        hashes = fc_visualization.add_diagram([{
-            "title": original_title,
-            "fig": fig2,
-        }])
-        print(hashes)
-        time.sleep(10)
-        for diagram in hashes:
-            if diagram['title'] == original_title:
-                print('Update diagram in progress')
-                diagram['title'] = original_title + ' updated'
-                diagram['fig'] = fig
-                hashes = fc_visualization.update_diagram(diagram)
-                print(hashes)
-
-        time.sleep(10)
-        hashes = fc_visualization.add_diagram([{
-            "title": "My OUTSIDE 2",
-            "fig": fig2,
-        }])
-        print(hashes)
         return 'plot'
 
 

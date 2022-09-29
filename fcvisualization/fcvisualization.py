@@ -55,6 +55,7 @@ class fcvisualization:
         self.download_dir = ''
         self.env = ''
         self.extra_content = []
+        self.path_prefix = ''
 
     def start(self, env, path_prefix, callback_fn, extra_content=[]):
         def run_fc():
@@ -63,6 +64,7 @@ class fcvisualization:
         def run_native():
             dash.run_server(debug=True, port=8050)
 
+        self.path_prefix = path_prefix
         self.callback_fn_terminal_state = callback_fn
         self.setup(env, extra_content)
         dash = self.create_dash(path_prefix)
@@ -464,7 +466,7 @@ class fcvisualization:
             if n_clicks is None:
                 raise PreventUpdate
             # reloading Dash application from scratch
-            return './'
+            return self.path_prefix
 
         def render_confounders():
             confounding_df = self.get_df_by_k_value(self.k_values[0], self.dataframes_by_k_value)
@@ -1414,12 +1416,10 @@ class fcvisualization:
     def get_hashes_from_extra_content(self):
         hashes = []
         for content in self.extra_content:
-            print(f'Adding {content["title"]} to hashes')
             hashes.append({
                 'title': content['title'],
                 'hash_id': content['hash_id'],
             })
-        print(hashes)
         return hashes
 
     def update_diagram(self, diagram):

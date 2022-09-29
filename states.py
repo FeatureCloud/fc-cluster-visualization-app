@@ -1,8 +1,20 @@
 import os
+import time
+from threading import Thread
 
 from FeatureCloud.app.engine.app import AppState, app_state
 
-import plot
+import fcvisualization
+import plotly.express as px
+
+TERMINAL = False
+fc_visualization = fcvisualization.fcvisualization()
+
+
+def callback_fn_terminal_state():
+    global TERMINAL
+    print("Transition to terminal state triggered...")
+    TERMINAL = True
 
 
 @app_state('initial')
@@ -15,7 +27,8 @@ class InitialState(AppState):
         path_prefix = os.getenv("PATH_PREFIX")
         print("PATH_PREFIX environment variable: ", path_prefix)
         print('Plot start...')
-        plot.start('fc', path_prefix)
+        thread_vis = Thread(target=fc_visualization.start, args=('fc', path_prefix, callback_fn_terminal_state))
+        thread_vis.start()
         return 'plot'
 
 
@@ -27,7 +40,9 @@ class PlotState(AppState):
         self.register_transition('terminal')
 
     def run(self) -> str:
-        # @TODO implement this using threads that can intercommunicate with each other: https://github.com/plotly/dash-core-components/issues/952
         # This will be needed when other states intervene
-        print('plot is finished')
-        return 'terminal'
+        if TERMINAL is True:
+            print('plot is finished')
+            return 'terminal'
+        print('plot is running')
+        return 'plot'

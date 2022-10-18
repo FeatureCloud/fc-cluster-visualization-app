@@ -231,26 +231,26 @@ When the app runs in a FeatureCloud workflow, a Finished button will be displaye
 ## Screenshots
 ### Confounders tab
 Confounding factors filter with scatter plot
-![Confounders tab](./assets/confounders-1.png)
+![Confounders tab](https://raw.githubusercontent.com/FeatureCloud/fc-cluster-visualization-app/main/fcvisualization/assets/confounders-1.png)
 
 Scatter plot with confounding factors diagrams
-![Confounders tab](./assets/confounders-2.png)
+![Confounders tab](https://raw.githubusercontent.com/FeatureCloud/fc-cluster-visualization-app/main/fcvisualization/assets/confounders-2.png)
 
 View selected data from scatter plot 
-![Confounders tab](./assets/confounders-3.png)
+![Confounders tab](https://raw.githubusercontent.com/FeatureCloud/fc-cluster-visualization-app/main/fcvisualization/assets/confounders-3.png)
 
 ### Distances tab
 Clustergram
-![Distances tab](./assets/distances.png)
+![Distances tab](https://raw.githubusercontent.com/FeatureCloud/fc-cluster-visualization-app/main/fcvisualization/assets/distances.png)
 
 ### Clustering Quality tab
 Silhouette diagram
-![Clustering Quality tab](./assets/clustering-quality.png)
+![Clustering Quality tab](https://raw.githubusercontent.com/FeatureCloud/fc-cluster-visualization-app/main/fcvisualization/assets/clustering-quality.png)
 
 ### Scree plot
-![Scree plot tab](./assets/scree-plot.png)
+![Scree plot tab](https://raw.githubusercontent.com/FeatureCloud/fc-cluster-visualization-app/main/fcvisualization/assets/scree-plot.png)
 
 ### Volcano plot
-![Volcano plot tab](./assets/volcano-plot.png)
+![Volcano plot tab](https://raw.githubusercontent.com/FeatureCloud/fc-cluster-visualization-app/main/fcvisualization/assets/volcano-plot.png)
 
 
